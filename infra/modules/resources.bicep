@@ -1,0 +1,172 @@
+param location string
+param prefix string
+param environment string
+param envShort string
+param appServiceSku string
+param m365DefaultDomain string
+param usageLocation string
+param timezone string
+param logDailyCapGb int
+param tags object
+
+// Sufixo determinístico para nomes que precisam ser globais (Web App, Storage).
+var suffix = take(uniqueString(subscription().id, resourceGroup().id, prefix, environment), 5)
+var isFree = appServiceSku == 'F1'
+
+// IDs de funções internas do Azure
+var storageTableDataContributor = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
+var storageQueueDataContributor = '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
+
+resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: 'id-${prefix}-${environment}'
+  location: location
+  tags: tags
+}
+
+resource logs 'Microsoft.OperationalInsights/workspaces@2023-09-01' = {
+  name: 'log-${prefix}-${environment}'
+  location: location
+  tags: tags
+  properties: {
+    sku: { name: 'PerGB2018' }
+    retentionInDays: 30
+    workspaceCapping: { dailyQuotaGb: logDailyCapGb }
+  }
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
+  name: 'appi-${prefix}-${environment}'
+  location: location
+  tags: tags
+  kind: 'web'
+  properties: {
+    Application_Type: 'web'
+    WorkspaceResourceId: logs.id
+    SamplingPercentage: 50
+  }
+}
+
+resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
+  name: toLower('st${prefix}${envShort}${suffix}')
+  location: location
+  tags: tags
+  kind: 'StorageV2'
+  sku: { name: 'Standard_LRS' }
+  properties: {
+    minimumTlsVersion: 'TLS1_2'
+    supportsHttpsTrafficOnly: true
+    allowBlobPublicAccess: false
+    allowSharedKeyAccess: false // somente Entra ID / Managed Identity
+    defaultToOAuthAuthentication: true
+  }
+}
+
+resource tableService 'Microsoft.Storage/storageAccounts/tableServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource tables 'Microsoft.Storage/storageAccounts/tableServices/tables@2023-05-01' = [
+  for t in ['solicitacoes', 'auditoria']: {
+    parent: tableService
+    name: t
+  }
+]
+
+resource queueService 'Microsoft.Storage/storageAccounts/queueServices@2023-05-01' = {
+  parent: storage
+  name: 'default'
+}
+
+resource tasksQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2023-05-01' = {
+  parent: queueService
+  name: 'tarefas'
+}
+
+resource tableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storage.id, identity.id, storageTableDataContributor)
+  scope: storage
+  properties: {
+    principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageTableDataContributor)
+  }
+}
+
+resource queueRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storage.id, identity.id, storageQueueDataContributor)
+  scope: storage
+  properties: {
+    principalId: identity.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', storageQueueDataContributor)
+  }
+}
+
+resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
+  name: 'asp-${prefix}-${environment}'
+  location: location
+  tags: tags
+  kind: 'linux'
+  sku: { name: appServiceSku }
+  properties: { reserved: true }
+}
+
+resource webApp 'Microsoft.Web/sites@2023-12-01' = {
+  name: 'app-${prefix}-${environment}-${suffix}'
+  location: location
+  tags: tags
+  kind: 'app,linux'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: { '${identity.id}': {} }
+  }
+  properties: {
+    serverFarmId: plan.id
+    httpsOnly: true
+    clientAffinityEnabled: false
+    siteConfig: {
+      linuxFxVersion: 'PYTHON|3.12'
+      appCommandLine: 'python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=* --no-server-header'
+      alwaysOn: !isFree
+      ftpsState: 'Disabled'
+      minTlsVersion: '1.2'
+      http20Enabled: true
+      appSettings: [
+        { name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: 'true' }
+        { name: 'WEBSITES_PORT', value: '8000' }
+        { name: 'ENVIRONMENT', value: environment }
+        { name: 'DRY_RUN', value: 'true' }
+        { name: 'STORAGE_BACKEND', value: 'azure_table' }
+        { name: 'AZURE_STORAGE_TABLE_ENDPOINT', value: storage.properties.primaryEndpoints.table }
+        { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
+        { name: 'AZURE_TENANT_ID', value: tenant().tenantId }
+        { name: 'M365_DEFAULT_DOMAIN', value: m365DefaultDomain }
+        { name: 'M365_DEFAULT_USAGE_LOCATION', value: usageLocation }
+        { name: 'TIMEZONE', value: timezone }
+        { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
+      ]
+    }
+  }
+}
+
+// Desabilita autenticação básica (FTP e SCM); o deploy usa o token do Entra ID.
+resource ftpPolicy 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2023-12-01' = {
+  parent: webApp
+  name: 'ftp'
+  properties: { allow: false }
+}
+
+resource scmPolicy 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2023-12-01' = {
+  parent: webApp
+  name: 'scm'
+  properties: { allow: false }
+}
+
+output webAppName string = webApp.name
+output webAppUrl string = 'https://${webApp.properties.defaultHostName}'
+output managedIdentityName string = identity.name
+output managedIdentityClientId string = identity.properties.clientId
+output managedIdentityPrincipalId string = identity.properties.principalId
+output storageAccountName string = storage.name
+output tableEndpoint string = storage.properties.primaryEndpoints.table

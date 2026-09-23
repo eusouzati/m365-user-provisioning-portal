@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ settings.app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
+</head>
+<body>
+  <header class="topo">
+    <span class="marca">{{ settings.app_name }}</span>
+    <span class="selos">
+      <span class="selo selo-{{ settings.environment }}">{{ settings.environment }}</span>
+      {% if settings.dry_run %}<span class="selo selo-dryrun">DRY_RUN</span>{% endif %}
+    </span>
+  </header>
+  <main class="conteudo">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="rodape">v{{ version }} · Software livre sob licença MIT</footer>
+</body>
+</html>

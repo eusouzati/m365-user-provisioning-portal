@@ -1,0 +1,13 @@
+:root { --fundo:#f6f7f9; --texto:#1f2328; --marca:#0f5cc0; --borda:#d8dde3; }
+* { box-sizing: border-box; }
+body { margin:0; font-family: "Segoe UI", system-ui, sans-serif; background:var(--fundo); color:var(--texto); }
+.topo { display:flex; justify-content:space-between; align-items:center; padding:12px 24px; background:#fff; border-bottom:1px solid var(--borda); }
+.marca { font-weight:600; color:var(--marca); }
+.selo { font-size:12px; padding:2px 8px; border-radius:10px; margin-left:6px; text-transform:uppercase; }
+.selo-lab { background:#e7f0ff; color:#0f5cc0; }
+.selo-production { background:#ffe8e8; color:#b3261e; }
+.selo-dryrun { background:#fff4d6; color:#8a5a00; }
+.conteudo { max-width:880px; margin:32px auto; padding:0 16px; }
+.etapas { line-height:1.8; }
+.aviso { padding:12px; background:#fff; border:1px solid var(--borda); border-radius:6px; }
+.rodape { text-align:center; font-size:12px; color:#6b7280; padding:24px; }
