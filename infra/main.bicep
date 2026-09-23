@@ -37,6 +37,13 @@ param entraClientId string = ''
 @allowed(['idtoken', 'fic'])
 param entraAuthFlow string = 'idtoken'
 
+@description('Grupos protegidos (papéis do portal), separados por vírgula.')
+param protectedGroupIds string = ''
+
+@description('Modo de licença: group ou direct.')
+@allowed(['group', 'direct'])
+param licenseMode string = 'group'
+
 @description('Tags adicionais.')
 param tags object = {}
 
@@ -64,6 +71,8 @@ module resources 'modules/resources.bicep' = {
     logDailyCapGb: logDailyCapGb
     entraClientId: entraClientId
     entraAuthFlow: entraAuthFlow
+    protectedGroupIds: protectedGroupIds
+    licenseMode: licenseMode
     tags: allTags
   }
 }

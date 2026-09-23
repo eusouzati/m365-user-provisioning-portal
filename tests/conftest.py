@@ -20,6 +20,8 @@ def make_settings(tmp_path, **overrides) -> Settings:
         "sqlite_path": str(tmp_path / "test.db"),
         "azure_tenant_id": TENANT,
         "entra_app_client_id": CLIENT_ID,
+        "graph_backend": "fake",
+        "protected_group_ids": "g-portal-adm",
     }
     base.update(overrides)
     return Settings(**base)

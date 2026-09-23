@@ -67,3 +67,20 @@ def test_sqlite_proibido_em_producao():
 def test_azure_table_exige_endpoint():
     with pytest.raises(ValidationError):
         Settings(_env_file=None, azure_tenant_id=T, storage_backend="azure_table")
+
+
+def test_fake_graph_proibido_em_producao():
+    with pytest.raises(ValidationError):
+        Settings(
+            _env_file=None,
+            azure_tenant_id=T,
+            environment="production",
+            graph_backend="fake",
+            storage_backend="azure_table",
+            azure_storage_table_endpoint="https://x.table.core.windows.net",
+        )
+
+
+def test_grupos_protegidos_normalizados():
+    s = Settings(_env_file=None, azure_tenant_id=T, protected_group_ids=" A-1 ,b-2,, ")
+    assert s.protected_groups == frozenset({"a-1", "b-2"})

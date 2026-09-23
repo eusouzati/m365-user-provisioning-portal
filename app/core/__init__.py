@@ -1,1 +1,1 @@
-"""Regras de negócio puras (geração de UPN, estados, perfis). Implementado a partir da Sprint 4."""
+"""Regras de negócio puras — sem dependência de Azure/Graph, 100% testáveis."""

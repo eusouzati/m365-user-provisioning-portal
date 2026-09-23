@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Perfis de onboarding · {{ settings.app_name }}{% endblock %}
+{% block content %}
+{% set aba = 'perfis' %}{% include "_admin_nav.html" %}
+<div class="titulo-linha">
+  <h1>Perfis de onboarding</h1>
+  <a class="botao" href="/admin/perfis/novo">Novo perfil</a>
+</div>
+{% if ok == 'salvo' %}<div class="alerta alerta-ok">Perfil salvo.</div>{% endif %}
+{% if ok == 'excluido' %}<div class="alerta alerta-ok">Perfil excluído.</div>{% endif %}
+<p class="ajuda">Cada perfil define os grupos de acesso e a licença que um novo colaborador recebe. O RH escolhe o perfil no formulário de solicitação.</p>
+<div class="rolagem">
+<table class="tabela">
+  <thead><tr><th>Perfil</th><th>Departamento</th><th>Tipo</th><th>Grupos de acesso</th><th>Licença</th><th>Status</th></tr></thead>
+  <tbody>
+    {% for p in perfis %}
+    <tr>
+      <td><a href="/admin/perfis/{{ p.id }}">{{ p.nome }}</a></td>
+      <td>{{ p.departamento }}</td>
+      <td>{{ tipos[p.tipo_colaborador] }}</td>
+      <td>{% for g in p.grupos_acesso %}{{ g.nome }}{% if not loop.last %}, {% endif %}{% else %}—{% endfor %}</td>
+      <td>{% if p.grupo_licenca %}{{ p.grupo_licenca.nome }}{% elif p.sku_licenca %}{{ sku_name(p.sku_licenca.part_number) }}{% else %}Sem licença{% endif %}</td>
+      <td>{% if p.ativo %}<span class="tag tag-ok">ativo</span>{% else %}<span class="tag">inativo</span>{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6">Nenhum perfil cadastrado ainda.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

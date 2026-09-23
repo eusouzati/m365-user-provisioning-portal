@@ -4,7 +4,7 @@ Portal **open source** (licença MIT) para automatizar a entrada e a saída de c
 
 Cada organização implanta o portal **no próprio tenant e na própria assinatura Azure**. Nenhum dado de tenant fica neste repositório.
 
-> **Status:** em desenvolvimento (v0.2 — Sprint 2: login Entra ID e papéis). Ainda não cria usuários.
+> **Status:** em desenvolvimento (v0.3 — Sprint 3: leitura do tenant via Microsoft Graph e perfis de onboarding). Ainda não cria usuários.
 
 ## Como funciona
 
@@ -42,7 +42,11 @@ pwsh ./scripts/Deploy-Application.ps1 -Environment lab                  # public
 
 pwsh ./scripts/New-EntraApplication.ps1 -Environment lab -AddMeToGroups Administradores   # login + papéis
 pwsh ./scripts/Deploy-Infrastructure.ps1 -Environment lab               # ativa o login no App Service
+
+pwsh ./scripts/Set-GraphPermissions.ps1 -Environment lab                # leitura do Graph pela Managed Identity
 ```
+
+Permissões do Microsoft Graph: [docs/PERMISSOES_GRAPH.md](docs/PERMISSOES_GRAPH.md).
 
 Guia completo: [docs/IMPLANTACAO.md](docs/IMPLANTACAO.md) · Login e papéis: [docs/CONFIGURACAO_ENTRA.md](docs/CONFIGURACAO_ENTRA.md).
 

@@ -15,6 +15,7 @@ MENSAGENS_403 = {
     "tenant_nao_autorizado": "Sua conta pertence a outra organização e não pode usar este portal.",
     "audiencia_invalida": "O token de acesso não foi emitido para este portal.",
     "provedor_nao_permitido": "Somente contas Microsoft Entra ID são aceitas.",
+    "csrf": "A página expirou ou a requisição não veio do portal. Recarregue e tente novamente.",
 }
 
 

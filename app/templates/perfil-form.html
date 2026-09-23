@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ "Editar" if perfil.id else "Novo" }} perfil · {{ settings.app_name }}{% endblock %}
+{% block content %}
+{% set aba = 'perfis' %}{% include "_admin_nav.html" %}
+<h1>{{ "Editar perfil" if perfil.id else "Novo perfil" }}</h1>
+
+{% if erros %}
+<div class="alerta alerta-erro" role="alert">
+  <strong>Corrija os itens abaixo:</strong>
+  <ul>{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<form class="formulario" method="post" action="{{ '/admin/perfis/' ~ perfil.id if perfil.id else '/admin/perfis' }}">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+  <label>Nome do perfil
+    <input name="nome" required minlength="3" maxlength="80" value="{{ perfil.nome }}" placeholder="Ex.: Financeiro — Funcionário">
+  </label>
+  <div class="linha">
+    <label>Departamento
+      <input name="departamento" required maxlength="80" value="{{ perfil.departamento }}" placeholder="Ex.: Financeiro">
+    </label>
+    <label>Tipo de colaborador
+      <select name="tipo_colaborador" required>
+        <option value="">Selecione…</option>
+        {% for k, v in tipos.items() %}<option value="{{ k }}" {% if perfil.tipo_colaborador == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+      </select>
+    </label>
+  </div>
+
+  <fieldset>
+    <legend>Grupos de acesso</legend>
+    {% for g in grupos_acesso %}
+    <label class="opcao"><input type="checkbox" name="grupos_acesso" value="{{ g.id }}" {% if g.id in perfil.grupos_acesso %}checked{% endif %}> {{ g.display_name }}{% if g.description %} <span class="ajuda">— {{ g.description }}</span>{% endif %}</label>
+    {% else %}
+    <p class="ajuda">Nenhum grupo de segurança elegível no tenant.</p>
+    {% endfor %}
+  </fieldset>
+
+  <fieldset>
+    <legend>Licença</legend>
+    {% if settings.license_mode == "group" %}
+    <label>Grupo de licença (licenciamento por grupo)
+      <select name="grupo_licenca">
+        <option value="">Sem licença</option>
+        {% for g in grupos_licenca %}<option value="{{ g.id }}" {% if perfil.grupo_licenca == g.id %}selected{% endif %}>{{ g.display_name }}</option>{% endfor %}
+      </select>
+    </label>
+    {% if not grupos_licenca %}<p class="ajuda">Nenhum grupo com licença atribuída foi encontrado. Crie um grupo de segurança no Entra ID e atribua a licença a ele (Entra admin center → Grupos → Licenças).</p>{% endif %}
+    <p class="ajuda">O colaborador entra neste grupo somente no dia anterior à admissão.</p>
+    {% else %}
+    <label>Licença (atribuição direta)
+      <select name="sku_licenca">
+        <option value="">Sem licença</option>
+        {% for s in skus %}<option value="{{ s.sku_id }}" {% if perfil.sku_licenca == s.sku_id %}selected{% endif %}>{{ sku_name(s.sku_part_number) }} ({{ s.available_units }} disponíveis)</option>{% endfor %}
+      </select>
+    </label>
+    {% endif %}
+  </fieldset>
+
+  <label class="opcao"><input type="checkbox" name="ativo" {% if perfil.ativo %}checked{% endif %}> Perfil ativo (disponível para o RH)</label>
+
+  <div class="acoes">
+    <button class="botao" type="submit">Salvar</button>
+    <a class="botao secundario" href="/admin/perfis">Cancelar</a>
+  </div>
+</form>
+
+{% if perfil.id %}
+<form method="post" action="/admin/perfis/{{ perfil.id }}/excluir" class="excluir">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button class="botao perigo" type="submit">Excluir perfil</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -12,3 +12,13 @@ def get_app_settings(request: Request) -> Settings:
 
 def get_storage(request: Request) -> StorageBackend:
     return request.app.state.storage
+
+
+def get_directory(request: Request):
+    """Cache de leituras do Microsoft Graph (DirectoryCache)."""
+    return request.app.state.directory
+
+
+def get_graph(request: Request):
+    """GraphService (somente leitura)."""
+    return request.app.state.graph

@@ -1,6 +1,6 @@
 [project]
 name = "m365-user-provisioning-portal"
-version = "0.2.0"
+version = "0.3.0"
 description = "Portal open source para provisionamento de usuários no Microsoft 365 / Entra ID a partir de solicitações do RH"
 readme = "README.md"
 license = { text = "MIT" }
@@ -15,7 +15,7 @@ select = ["E", "F", "W", "I", "B", "UP", "S", "N"]
 ignore = ["B008"]  # Depends() em parâmetros é o padrão do FastAPI
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]
+"tests/*" = ["S101", "S105", "S106"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

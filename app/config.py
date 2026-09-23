@@ -45,6 +45,15 @@ class Settings(BaseSettings):
     website_auth_enabled: bool = False
     website_site_name: str = ""
 
+    # Microsoft Graph
+    # msgraph: real (Managed Identity no Azure; "az login" localmente) · fake: dados simulados
+    graph_backend: Literal["msgraph", "fake"] = "msgraph"
+    graph_cache_seconds: int = Field(default=300, ge=0, le=3600)
+    license_mode: Literal["group", "direct"] = "group"
+    tap_lifetime_minutes: int = Field(default=480, ge=10, le=43200)
+    # Grupos que NUNCA podem ser usados em perfis (ex.: grupos dos papéis do portal)
+    protected_group_ids: str = ""
+
     # Armazenamento
     storage_backend: Literal["sqlite", "azure_table"] = "sqlite"
     sqlite_path: str = "data/m365up.db"
@@ -82,6 +91,8 @@ class Settings(BaseSettings):
                 raise ValueError("AUTH_MODE=dev é proibido no Azure App Service")
         if self.auth_mode == "easyauth" and not self.azure_tenant_id:
             raise ValueError("AZURE_TENANT_ID é obrigatório quando AUTH_MODE=easyauth")
+        if self.is_production and self.graph_backend == "fake":
+            raise ValueError("GRAPH_BACKEND=fake é proibido em produção")
         if self.environment == "production" and self.storage_backend == "sqlite":
             raise ValueError("SQLite não é permitido em produção; use STORAGE_BACKEND=azure_table")
         return self
@@ -89,6 +100,12 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def protected_groups(self) -> frozenset[str]:
+        return frozenset(
+            g.strip().lower() for g in self.protected_group_ids.split(",") if g.strip()
+        )
 
     @property
     def dev_roles(self) -> frozenset[str]:

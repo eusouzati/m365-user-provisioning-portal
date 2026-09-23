@@ -58,3 +58,10 @@ Navegador ──► App Service Authentication (Easy Auth)
 - **Autorização** (o que pode): App Roles, verificados em cada rota do backend. O menu da interface apenas reflete os papéis — não é controle de acesso.
 - Qualquer usuário do tenant pode entrar (os gestores precisarão gerar o TAP na Sprint 7), mas sem papel só vê a página inicial.
 - `/health` e `/health/ready` são públicos (excluídos do login).
+
+## Microsoft Graph (Sprint 3)
+
+- `app/graph/service.py` é a **única** camada que fala com o Graph. Nesta versão só executa `GET`.
+- Leituras do tenant ficam em cache por `GRAPH_CACHE_SECONDS` (padrão 300 s); o botão "Atualizar" força nova leitura.
+- Perfis de onboarding ficam no Azure Table `perfis`. Ao salvar, os IDs recebidos do navegador são **revalidados contra o tenant** (grupo existe, é de segurança, não é dinâmico, não tem funções administrativas, não é grupo de papel do portal).
+- Formulários usam proteção CSRF (cookie HttpOnly/SameSite=Strict + campo oculto + verificação de `Origin`).

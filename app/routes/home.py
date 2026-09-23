@@ -47,12 +47,3 @@ def aprovacoes(
     principal: Principal = Depends(require_roles(Roles.APROVADOR)),
 ) -> HTMLResponse:
     return _building(request, settings, principal, "Aprovações", 5)
-
-
-@router.get("/admin", response_class=HTMLResponse)
-def admin(
-    request: Request,
-    settings: Settings = Depends(get_app_settings),
-    principal: Principal = Depends(require_roles(Roles.ADMINISTRADOR)),
-) -> HTMLResponse:
-    return _building(request, settings, principal, "Administração", 3)

@@ -36,6 +36,14 @@ Assert-AzureContext -TenantId $tenantId -SubscriptionId $subscriptionId
 az bicep version *> $null
 if ($LASTEXITCODE -ne 0) { throw 'Bicep CLI não encontrado. Rode: az bicep install' }
 
+# Grupos dos papéis do portal (criados por New-EntraApplication.ps1) nunca podem entrar em perfis
+$protected = ''
+$entraOutputs = Join-Path (Split-Path $PSScriptRoot -Parent) "entra-outputs.$Environment.json"
+if (Test-Path $entraOutputs) {
+    $eo = Get-Content $entraOutputs -Raw | ConvertFrom-Json
+    $protected = (@($eo.grupos.PSObject.Properties | ForEach-Object { $_.Value.id }) -join ',')
+}
+
 $template = Join-Path (Split-Path $PSScriptRoot -Parent) 'infra/main.bicep'
 $deploymentName = "$prefix-$Environment-$(Get-Date -Format 'yyyyMMddHHmmss')"
 $common = @(
@@ -50,7 +58,9 @@ $common = @(
     "usageLocation=$(if ($cfg['M365_DEFAULT_USAGE_LOCATION']) { $cfg['M365_DEFAULT_USAGE_LOCATION'] } else { 'BR' })",
     "timezone=$(if ($cfg['TIMEZONE']) { $cfg['TIMEZONE'] } else { 'America/Sao_Paulo' })",
     "entraClientId=$($cfg['ENTRA_APP_CLIENT_ID'])",
-    "entraAuthFlow=$(if ($cfg['ENTRA_AUTH_FLOW']) { $cfg['ENTRA_AUTH_FLOW'] } else { 'idtoken' })"
+    "entraAuthFlow=$(if ($cfg['ENTRA_AUTH_FLOW']) { $cfg['ENTRA_AUTH_FLOW'] } else { 'idtoken' })",
+    "protectedGroupIds=$protected",
+    "licenseMode=$(if ($cfg['LICENSE_MODE']) { $cfg['LICENSE_MODE'] } else { 'group' })"
 )
 
 Write-Host "`n== Pré-visualização (what-if) — rg-$prefix-$Environment / $location / plano $AppServiceSku ==" -ForegroundColor Cyan

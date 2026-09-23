@@ -16,6 +16,13 @@ param entraClientId string = ''
 @allowed(['idtoken', 'fic'])
 param entraAuthFlow string = 'idtoken'
 
+@description('IDs (separados por vírgula) de grupos que nunca podem ser usados em perfis — ex.: grupos dos papéis do portal.')
+param protectedGroupIds string = ''
+
+@description('Modo de licença: group (licenciamento por grupo, requer Entra ID P1) ou direct.')
+@allowed(['group', 'direct'])
+param licenseMode string = 'group'
+
 // Sufixo determinístico para nomes que precisam ser globais (Web App, Storage).
 var suffix = take(uniqueString(subscription().id, resourceGroup().id, prefix, environment), 5)
 var isFree = appServiceSku == 'F1'
@@ -151,6 +158,9 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
         { name: 'AZURE_TENANT_ID', value: tenant().tenantId }
         { name: 'AUTH_MODE', value: 'easyauth' }
+        { name: 'GRAPH_BACKEND', value: 'msgraph' }
+        { name: 'PROTECTED_GROUP_IDS', value: protectedGroupIds }
+        { name: 'LICENSE_MODE', value: licenseMode }
         { name: 'ENTRA_APP_CLIENT_ID', value: entraClientId }
         // Somente no fluxo 'fic': o login usa a Managed Identity como credencial federada
         { name: 'OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID', value: useFic ? identity.properties.clientId : '' }
