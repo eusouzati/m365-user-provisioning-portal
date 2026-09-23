@@ -32,6 +32,7 @@
   <main class="conteudo">
     {% block content %}{% endblock %}
   </main>
+  <script src="{{ url_for('static', path='js/envio.js') }}" defer></script>
   <footer class="rodape">v{{ version }} · Software livre sob licença MIT</footer>
 </body>
 </html>

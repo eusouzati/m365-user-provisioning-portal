@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ req.id }} · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<div class="titulo-linha">
+  <h1><code class="grande">{{ req.id }}</code></h1>
+  <span class="status-sol st-{{ req.status }}">{{ req.status_label }}</span>
+</div>
+
+{% if ok == 'enviada' %}<div class="alerta alerta-ok">Solicitação enviada. Ela agora aguarda aprovação.</div>{% endif %}
+{% if ok == 'aprovada' %}<div class="alerta alerta-ok">Solicitação aprovada.{% if settings.dry_run %} Em DRY_RUN, a conta não será criada — a criação real chega na Sprint 6.{% endif %}</div>{% endif %}
+{% if ok == 'rejeitada' %}<div class="alerta alerta-ok">Solicitação rejeitada.</div>{% endif %}
+{% if ok == 'cancelada' %}<div class="alerta alerta-ok">Solicitação cancelada.</div>{% endif %}
+{% if erros %}<div class="alerta alerta-erro" role="alert"><ul>{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+{% if propria_pendente %}<div class="alerta alerta-aviso">Você fez esta solicitação; outro aprovador precisa decidir.</div>{% endif %}
+
+<section class="painel">
+  <h2>Colaborador</h2>
+  <dl class="grade">
+    <dt>Nome de exibição</dt><dd>{{ req.conta.display_name }}</dd>
+    <dt>UPN (login)</dt><dd><code>{{ req.conta.user_principal_name }}</code></dd>
+    <dt>E-mail</dt><dd><code>{{ req.conta.mail }}</code></dd>
+    <dt>Matrícula</dt><dd>{{ req.dados.matricula }}</dd>
+    <dt>Tipo</dt><dd>{{ tipos[req.dados.tipo_colaborador] }}</dd>
+    <dt>Cargo</dt><dd>{{ req.dados.cargo }}</dd>
+    <dt>Departamento</dt><dd>{{ req.dados.departamento }}</dd>
+    {% if req.dados.empresa %}<dt>Empresa</dt><dd>{{ req.dados.empresa }}</dd>{% endif %}
+    {% if req.dados.unidade %}<dt>Unidade</dt><dd>{{ req.dados.unidade }}</dd>{% endif %}
+    <dt>Gestor</dt><dd>{{ req.gestor.nome }} <span class="ajuda">({{ req.gestor.upn }})</span></dd>
+    <dt>Perfil</dt><dd>{{ req.perfil.nome }}</dd>
+    <dt>Grupos</dt><dd>{% for g in req.perfil.grupos_acesso %}{{ g.nome }}{% if not loop.last %}, {% endif %}{% else %}Nenhum{% endfor %}</dd>
+    <dt>Licença</dt><dd>{% if req.perfil.grupo_licenca %}{{ req.perfil.grupo_licenca.nome }}{% elif req.perfil.sku_licenca %}{{ req.perfil.sku_licenca.part_number }}{% else %}Sem licença{% endif %}</dd>
+    <dt>Licença em</dt><dd>{{ req.data_licenca.strftime("%d/%m/%Y") if req.data_licenca else "—" }}</dd>
+    <dt>Admissão (ativação)</dt><dd>{{ req.data_admissao.strftime("%d/%m/%Y") }}</dd>
+    <dt>Solicitante</dt><dd>{{ req.solicitante.nome }}</dd>
+  </dl>
+</section>
+
+{% if pode_decidir %}
+<section class="painel">
+  <h2>Decisão</h2>
+  <form method="post" class="formulario sem-borda" data-envio-unico>
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <label>Comentário <span class="ajuda">(obrigatório para rejeitar)</span>
+      <textarea name="comentario" rows="3" maxlength="500"></textarea>
+    </label>
+    <div class="acoes">
+      <button class="botao" type="submit" formaction="/aprovacoes/{{ req.id }}/aprovar">Aprovar</button>
+      <button class="botao perigo" type="submit" formaction="/aprovacoes/{{ req.id }}/rejeitar">Rejeitar</button>
+    </div>
+    <p class="ajuda">Ao aprovar, os dados são conferidos novamente no Microsoft 365 (UPN, matrícula, gestor e perfil).</p>
+  </form>
+</section>
+{% endif %}
+
+{% if pode_cancelar %}
+<form method="post" action="/solicitacoes/{{ req.id }}/cancelar" class="excluir" data-envio-unico>
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button class="botao perigo" type="submit">Cancelar solicitação</button>
+</form>
+{% endif %}
+
+<section class="painel">
+  <h2>Histórico</h2>
+  <ol class="historico">
+    {% for ev in req.historico %}
+    <li>
+      <span class="ajuda">{{ ev.em|data_local(True) }}</span> —
+      <strong>{{ ev.ator.nome }}</strong>:
+      {% if ev.de %}{{ status_labels[ev.de] }} → {% endif %}{{ status_labels[ev.para] }}
+      {% if ev.comentario %}<div class="comentario">“{{ ev.comentario }}”</div>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endblock %}

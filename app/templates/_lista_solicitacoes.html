@@ -1,0 +1,20 @@
+<div class="rolagem">
+<table class="tabela">
+  <thead><tr><th>Solicitação</th><th>Data</th><th>Colaborador</th><th>UPN</th><th>Admissão</th>{% if mostrar_solicitante %}<th>Solicitante</th>{% endif %}<th>Status</th></tr></thead>
+  <tbody>
+    {% for r in itens %}
+    <tr>
+      <td><a href="/solicitacoes/{{ r.id }}"><code>{{ r.id }}</code></a></td>
+      <td>{{ r.criado_em|data_local }}</td>
+      <td>{{ r.conta.display_name }}</td>
+      <td><code class="pequeno">{{ r.conta.user_principal_name }}</code></td>
+      <td>{{ r.data_admissao.strftime("%d/%m/%Y") }}</td>
+      {% if mostrar_solicitante %}<td>{{ r.solicitante.nome }}</td>{% endif %}
+      <td><span class="status-sol st-{{ r.status }}">{{ r.status_label }}</span></td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7">{{ vazio or "Nenhuma solicitação." }}</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>

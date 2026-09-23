@@ -3,9 +3,11 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 
-from app.auth import Principal, Roles, get_current_principal, require_roles
+from app.auth import Principal, Roles, get_current_principal
 from app.config import Settings
-from app.dependencies import get_app_settings
+from app.core.workflow import FINAL_STATUSES
+from app.dependencies import get_app_settings, get_storage
+from app.storage import StorageBackend
 from app.templating import templates
 
 router = APIRouter(include_in_schema=False)
@@ -17,24 +19,24 @@ def _page(request: Request, name: str, settings: Settings, principal: Principal,
     )
 
 
-def _building(request: Request, settings: Settings, principal: Principal, titulo: str, sprint: int):
-    ctx = {"titulo": titulo, "sprint": sprint}
-    return _page(request, "em-construcao.html", settings, principal, **ctx)
-
-
 @router.get("/", response_class=HTMLResponse)
 def home(
     request: Request,
     settings: Settings = Depends(get_app_settings),
     principal: Principal = Depends(get_current_principal),
+    storage: StorageBackend = Depends(get_storage),
 ) -> HTMLResponse:
-    return _page(request, "index.html", settings, principal)
-
-
-@router.get("/aprovacoes", response_class=HTMLResponse)
-def aprovacoes(
-    request: Request,
-    settings: Settings = Depends(get_app_settings),
-    principal: Principal = Depends(require_roles(Roles.APROVADOR)),
-) -> HTMLResponse:
-    return _building(request, settings, principal, "Aprovações", 5)
+    pendentes = minhas = 0
+    if principal.has_any_role(Roles.APROVADOR):
+        pendentes = sum(
+            1
+            for r in storage.list_requests(status="enviada")
+            if not r.eh_do_solicitante(principal.object_id)
+        )
+    if principal.has_any_role(Roles.SOLICITANTE):
+        minhas = sum(
+            1
+            for r in storage.list_requests(solicitante_oid=principal.object_id)
+            if r.status not in FINAL_STATUSES
+        )
+    return _page(request, "index.html", settings, principal, pendentes=pendentes, minhas=minhas)

@@ -4,7 +4,7 @@ Portal **open source** (licença MIT) para automatizar a entrada e a saída de c
 
 Cada organização implanta o portal **no próprio tenant e na própria assinatura Azure**. Nenhum dado de tenant fica neste repositório.
 
-> **Status:** em desenvolvimento (v0.4 — Sprint 4: formulário de novo colaborador com revisão; envio ainda simulado). Ainda não cria usuários.
+> **Status:** em desenvolvimento (v0.5 — Sprint 5: solicitações gravadas e fluxo de aprovação; ainda não cria usuários). Ainda não cria usuários.
 
 ## Como funciona
 

@@ -11,6 +11,15 @@ permissions:
 jobs:
   testes:
     runs-on: ubuntu-latest
+    services:
+      azurite:  # emulador do Azure Table Storage (testes de contrato)
+        image: mcr.microsoft.com/azure-storage/azurite
+        ports: ["10002:10002"]
+        options: >-
+          --entrypoint azurite-table
+    env:
+      # Chave pública e documentada do Azurite (não é segredo)
+      AZURITE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

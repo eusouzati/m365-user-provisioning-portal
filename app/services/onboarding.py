@@ -63,7 +63,10 @@ def build_review(
     directory: DirectoryCache,
     storage: StorageBackend,
     today: date | None = None,
+    reserved_upns: frozenset[str] = frozenset(),
+    reserved_employee_ids: dict[str, str] | None = None,
 ) -> Review:
+    """``reserved_*``: UPNs e matrículas de outras solicitações ainda em andamento."""
     hoje = today or today_in(settings)
     erros: list[str] = []
     avisos: list[str] = []
@@ -111,6 +114,8 @@ def build_review(
     # Matrícula
     if graph.find_users_by_employee_id(form.matricula):
         erros.append(f"A matrícula {form.matricula} já pertence a outro usuário do tenant.")
+    elif outra := (reserved_employee_ids or {}).get(form.matricula):
+        erros.append(f"A matrícula {form.matricula} já está na solicitação {outra}, em andamento.")
 
     # Nomes / UPN
     names = None
@@ -123,7 +128,9 @@ def build_review(
                 domain=dominio,
                 pattern=settings.upn_pattern,
                 particles=settings.particles,
-                is_taken=lambda addr, nick: bool(graph.find_address_conflicts(addr, nick)),
+                is_taken=lambda addr, nick: (
+                    addr.lower() in reserved_upns or bool(graph.find_address_conflicts(addr, nick))
+                ),
             )
         except NamingError as exc:
             erros.append(str(exc))
@@ -134,8 +141,8 @@ def build_review(
     assert names and perfil and gestor  # noqa: S101 — garantido pelas validações acima
     if names.renamed:
         avisos.append(
-            f"O login {names.base_local_part}@{dominio} já está em uso; "
-            f"será usado {names.user_principal_name}."
+            f"O login {names.base_local_part}@{dominio} já está em uso (no tenant ou em outra "
+            f"solicitação em andamento); será usado {names.user_principal_name}."
         )
 
     tem_licenca = bool(perfil.grupo_licenca or perfil.sku_licenca)

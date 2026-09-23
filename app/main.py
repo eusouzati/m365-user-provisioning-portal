@@ -17,7 +17,7 @@ from app.errors import register_error_handlers
 from app.graph import build_graph
 from app.graph.directory import DirectoryCache
 from app.observability import configure_observability
-from app.routes import admin, api, health, home, requests
+from app.routes import admin, api, approvals, health, home, requests
 from app.security import SecurityHeadersMiddleware
 from app.storage import build_storage
 
@@ -48,6 +48,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(api.router)
     app.include_router(admin.router)
     app.include_router(requests.router)
+    app.include_router(approvals.router)
     app.include_router(home.router)
     register_error_handlers(app)
     return app

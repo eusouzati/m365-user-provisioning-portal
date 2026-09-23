@@ -21,6 +21,7 @@ from app.core.profiles import (
     resolve_selection,
 )
 from app.core.skus import friendly_sku_name
+from app.core.workflow import STATUS_LABELS
 from app.csrf import verify_csrf
 from app.dependencies import get_app_settings, get_directory, get_storage
 from app.graph.directory import DirectoryCache
@@ -122,6 +123,27 @@ def overview_json(
             ],
             "dryRun": settings.dry_run,
         }
+    )
+
+
+# ---------------------------------------------------------------- solicitações
+@router.get("/solicitacoes", response_class=HTMLResponse)
+def all_requests(
+    request: Request,
+    status: str = "",
+    settings: Settings = Depends(get_app_settings),
+    storage: StorageBackend = Depends(get_storage),
+    principal: Principal = AdminDep,
+) -> HTMLResponse:
+    itens = storage.list_requests(status=status if status in STATUS_LABELS else None, limit=500)
+    return _render(
+        request,
+        "solicitacoes.html",
+        settings,
+        principal,
+        itens=itens,
+        titulo="Todas as solicitações",
+        aba="solicitacoes",
     )
 
 

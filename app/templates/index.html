@@ -7,6 +7,8 @@
 <ul class="papeis">
   {% for label in principal.role_labels %}<li>{{ label }}</li>{% endfor %}
 </ul>
+{% if pendentes %}<div class="alerta alerta-aviso"><a href="/aprovacoes">{{ pendentes }} solicitação(ões) aguardando sua aprovação.</a></div>{% endif %}
+{% if minhas %}<div class="alerta alerta-ok"><a href="/solicitacoes">Você tem {{ minhas }} solicitação(ões) em andamento.</a></div>{% endif %}
 <div class="cartoes">
   {% if principal.has_any_role(Roles.SOLICITANTE) %}
   <a class="cartao" href="/solicitacoes"><strong>Solicitações</strong><span>Pedir a criação ou o desligamento de colaboradores.</span></a>

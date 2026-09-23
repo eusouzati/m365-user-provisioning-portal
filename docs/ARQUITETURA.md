@@ -79,3 +79,21 @@ Formulário (RH) ──► POST /solicitacoes/revisar ──► tela de revisão
 ```
 
 Regras de nome: [REGRAS_DE_NOME.md](REGRAS_DE_NOME.md).
+
+## Solicitações e aprovação (Sprint 5)
+
+```text
+enviada ──► aprovada ──► (Sprint 6+) conta_criada ► licenciada ► ativa
+   │   └──► rejeitada (comentário obrigatório)
+   └──────► cancelada (solicitante ou administrador)
+```
+
+- **Request ID** `REQ-AAAAMMDD-NNNN`, sequencial por dia (fuso `TIMEZONE`), gerado de forma atômica (transação no SQLite; ETag no Azure Table).
+- **Idempotência**: a tela de revisão gera uma chave única; reenvios e duplo clique com a mesma chave levam à solicitação já criada. O botão também é desabilitado no navegador.
+- **Segregação**: quem solicitou não aprova nem rejeita a própria solicitação — mesmo tendo os dois papéis.
+- **Revalidação na aprovação**: perfil, gestor, matrícula e UPN são conferidos de novo no tenant; se o UPN ficou indisponível, é recalculado e a mudança fica no histórico.
+- **Reservas**: UPNs e matrículas de solicitações em andamento não podem ser reutilizados por outra solicitação.
+- **Concorrência**: gravações usam versão/ETag; decisões simultâneas não se sobrescrevem.
+- **Visibilidade**: o solicitante vê só as próprias solicitações; Aprovadores e Administradores veem todas.
+
+Armazenamento (Azure Table `solicitacoes`): `PartitionKey=req` (solicitação), `contador` (sequência diária) e `idem` (chaves de idempotência).

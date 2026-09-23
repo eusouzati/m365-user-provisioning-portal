@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Aprovações · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Aprovações</h1>
+<h2>Aguardando aprovação ({{ pendentes|length }})</h2>
+<p class="ajuda">Solicitações feitas por você aparecem aqui, mas precisam ser aprovadas por outra pessoa.</p>
+{% set itens = pendentes %}{% set mostrar_solicitante = true %}{% set vazio = "Nenhuma solicitação pendente." %}
+{% include "_lista_solicitacoes.html" %}
+<h2 class="espaco">Decididas recentemente</h2>
+{% set itens = recentes %}{% set vazio = "Nenhuma decisão recente." %}
+{% include "_lista_solicitacoes.html" %}
+{% endblock %}
