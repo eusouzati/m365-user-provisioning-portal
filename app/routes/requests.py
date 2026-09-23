@@ -1,4 +1,4 @@
-"""Área do RH: formulário de novo colaborador, revisão e envio (simulado nesta versão)."""
+"""Área do RH: formulário de novo colaborador, revisão, envio e acompanhamento."""
 
 from __future__ import annotations
 
@@ -16,11 +16,23 @@ from app.core.profiles import TIPOS_COLABORADOR
 from app.core.requests import NewHireForm, friendly_errors
 from app.core.workflow import REQUEST_ID_RE, WorkflowError, cancel
 from app.csrf import verify_csrf
-from app.dependencies import get_app_settings, get_directory, get_graph, get_storage
+from app.dependencies import (
+    get_app_settings,
+    get_directory,
+    get_graph,
+    get_storage,
+    get_writer,
+)
 from app.graph.directory import DirectoryCache
 from app.graph.errors import GraphError
 from app.graph.service import GraphService
+from app.graph.writer import GraphWriter
 from app.services.onboarding import ReviewError, today_in
+from app.services.provisioning import (
+    PROVISIONABLE,
+    ProvisioningError,
+    UserProvisioningService,
+)
 from app.services.requests_flow import new_request as build_request
 from app.services.requests_flow import pessoa, review_form
 from app.storage import StorageBackend
@@ -259,7 +271,60 @@ def render_detail(request, settings, principal, req, erros=None, ok="", status=2
         propria_pendente=req.pendente
         and req.eh_do_solicitante(principal.object_id)
         and principal.has_any_role(Roles.APROVADOR),
+        pode_provisionar=req.status in PROVISIONABLE
+        and principal.has_any_role(Roles.ADMINISTRADOR),
     )
+
+
+def run_provisioning(req, *, settings, writer, directory, storage):
+    """Executa o provisionamento sem derrubar a requisição; falhas ficam nas etapas."""
+    service = UserProvisioningService(
+        settings=settings, writer=writer, directory=directory, storage=storage
+    )
+    try:
+        return service.run(req)
+    except (ProvisioningError, ConcurrencyError) as exc:
+        logger.warning("Provisionamento de %s não executado: %s", req.id, exc)
+        return None
+
+
+@router.post("/{request_id}/provisionar", dependencies=[Depends(verify_csrf)])
+def provision_request(
+    request_id: str,
+    request: Request,
+    settings: Settings = Depends(get_app_settings),
+    directory: DirectoryCache = Depends(get_directory),
+    storage: StorageBackend = Depends(get_storage),
+    writer: GraphWriter = Depends(get_writer),
+    principal: Principal = Depends(require_roles(Roles.ADMINISTRADOR)),
+) -> Response:
+    """Administrador: executa (ou reprocessa) as etapas pendentes/falhas."""
+    req = load_visible(storage, request_id, principal)
+    if req is None:
+        return RedirectResponse("/admin/solicitacoes", status_code=303)
+    if req.status not in PROVISIONABLE:
+        return render_detail(
+            request,
+            settings,
+            principal,
+            req,
+            [f"A solicitação está '{req.status_label}' e não pode ser provisionada."],
+            status=409,
+        )
+    logger.info("Provisionamento de %s disparado por %s", request_id, principal.object_id)
+    resultado = run_provisioning(
+        req, settings=settings, writer=writer, directory=directory, storage=storage
+    )
+    if resultado is None:
+        return render_detail(
+            request,
+            settings,
+            principal,
+            storage.get_request(request_id),
+            ["A solicitação foi alterada por outra pessoa. Confira o status e tente de novo."],
+            status=409,
+        )
+    return RedirectResponse(f"/solicitacoes/{request_id}?ok=provisionada", status_code=303)
 
 
 @router.get("/{request_id}", response_class=HTMLResponse)

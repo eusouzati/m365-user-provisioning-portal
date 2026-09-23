@@ -35,7 +35,7 @@ STATUS_LABELS: dict[str, str] = {
     "aprovada": "Aprovada",
     "rejeitada": "Rejeitada",
     "cancelada": "Cancelada",
-    "conta_criada": "Conta criada",
+    "conta_criada": "Conta criada (desativada)",
     "licenciada": "Licenciada",
     "ativa": "Ativa",
     "falha_parcial": "Falha parcial",
@@ -87,6 +87,32 @@ class GestorSnapshot(BaseModel):
     upn: str
 
 
+EtapaStatus = Literal["pendente", "ok", "falhou", "simulado"]
+
+ETAPA_LABELS: dict[str, str] = {
+    "criar_usuario": "Criar usuário (desativado, sem licença)",
+    "definir_gestor": "Definir gestor",
+}
+
+ETAPA_STATUS_LABELS: dict[str, str] = {
+    "pendente": "Pendente",
+    "ok": "Concluída",
+    "falhou": "Falhou",
+    "simulado": "Simulada (DRY_RUN)",
+}
+
+
+class Etapa(BaseModel):
+    chave: str  # criar_usuario | definir_gestor | grupo:<id>
+    nome: str
+    status: EtapaStatus = "pendente"
+    detalhe: str = ""
+    em: datetime | None = None
+
+
+SISTEMA = Pessoa(oid="sistema", nome="Portal (automático)")
+
+
 class ProvisioningRequest(BaseModel):
     id: str
     idempotency_key: str
@@ -101,6 +127,8 @@ class ProvisioningRequest(BaseModel):
     data_admissao: date
     data_licenca: date | None
     historico: list[Evento] = Field(default_factory=list)
+    etapas: list[Etapa] = Field(default_factory=list)
+    object_id: str = ""  # ID do usuário criado no Entra
     versao: int = 1
 
     @property
@@ -113,6 +141,15 @@ class ProvisioningRequest(BaseModel):
 
     def eh_do_solicitante(self, oid: str) -> bool:
         return self.solicitante.oid.lower() == oid.lower()
+
+
+def transition(
+    req: ProvisioningRequest, para: Status, comentario: str = "", ator: Pessoa = SISTEMA
+) -> ProvisioningRequest:
+    """Transição automática (provisionamento)."""
+    if req.status == para:
+        return req
+    return _transition(req, ator, para, comentario)
 
 
 def format_request_id(day: date, sequence: int) -> str:

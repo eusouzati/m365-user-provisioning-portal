@@ -108,6 +108,7 @@ class MsGraphService:
         self._sleep = sleep
         self._token: str | None = None
         self._token_exp = 0.0
+        self._allow_write = False  # somente MsGraphWriter habilita escrita
 
     # ------------------------------------------------------------------ HTTP
     def _bearer(self) -> str:
@@ -122,8 +123,11 @@ class MsGraphService:
         url: str,
         params: dict[str, str] | None = None,
         advanced: bool = False,
+        json: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        if method.upper() != "GET":
+        method = method.upper()
+        is_read = method == "GET"
+        if not is_read and not self._allow_write:
             raise ReadOnlyViolationError(f"Escrita bloqueada no Graph: {method} {url}")
         if not url.startswith("https://"):
             url = f"{GRAPH_BASE}/{url.lstrip('/')}"
@@ -133,14 +137,16 @@ class MsGraphService:
 
         for attempt in range(self._max_retries + 1):
             try:
-                resp = self._client.request(method, url, params=params, headers=headers)
+                resp = self._client.request(method, url, params=params, headers=headers, json=json)
             except httpx.TransportError as exc:
-                if attempt >= self._max_retries:
+                # Escrita com falha de rede é ambígua: não repetir às cegas.
+                if not is_read or attempt >= self._max_retries:
                     raise GraphError(f"Falha de rede no Graph: {exc}") from exc
                 self._sleep(min(2**attempt, 20))
                 continue
 
-            if resp.status_code in RETRY_STATUS and attempt < self._max_retries:
+            retryable = RETRY_STATUS if is_read else {429}  # 429 = não processado
+            if resp.status_code in retryable and attempt < self._max_retries:
                 retry_after = resp.headers.get("Retry-After", "")
                 delay = int(retry_after) if retry_after.isdigit() else 2**attempt
                 logger.warning(
@@ -159,6 +165,8 @@ class MsGraphService:
                 code, msg = err.get("code", ""), err.get("message", resp.text[:200])
                 cls = GraphPermissionError if resp.status_code == 403 else GraphError
                 raise cls(f"Graph {resp.status_code} {code}: {msg}", resp.status_code, code)
+            if resp.status_code == 204 or not resp.content:
+                return {}
             return resp.json()
         raise GraphError("Limite de tentativas excedido")  # pragma: no cover
 

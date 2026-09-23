@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 
 from app import __version__
 from app.auth import Roles
-from app.core.workflow import STATUS_LABELS
+from app.core.workflow import ETAPA_STATUS_LABELS, STATUS_LABELS
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 templates.env.globals.update(version=__version__, Roles=Roles)
@@ -28,3 +28,4 @@ def _data_local(value, com_hora: bool = False) -> str:
 
 templates.env.filters["data_local"] = _data_local
 templates.env.globals["status_labels"] = STATUS_LABELS
+templates.env.globals["etapa_labels"] = ETAPA_STATUS_LABELS

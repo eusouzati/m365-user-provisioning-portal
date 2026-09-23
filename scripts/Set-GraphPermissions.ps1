@@ -11,7 +11,12 @@
     Domain.Read.All                   domínios verificados
     Policy.Read.AuthenticationMethod  política de Temporary Access Pass
 
-  Níveis de escrita serão adicionados nas Sprints 6 a 8, um a um, com a mesma confirmação.
+  Nível "criacao" (Sprint 6) — inclui o nível "leitura" e adiciona:
+    User.ReadWrite.All                criar a conta (desativada), definir gestor e propriedades
+    User-LifeCycleInfo.ReadWrite.All  definir employeeHireDate / employeeLeaveDateTime
+    GroupMember.ReadWrite.All         adicionar aos grupos de acesso do perfil
+
+  Níveis seguintes (Sprints 7 e 8) serão adicionados com a mesma confirmação.
   Idempotente e nunca remove permissões (permissões extras são apenas listadas).
 
   Permissões delegadas do operador (Administrador Global ou Administrador de Funções Privilegiadas):
@@ -20,11 +25,12 @@
 .EXAMPLE
   ./scripts/Set-GraphPermissions.ps1 -Environment lab -WhatIfOnly
   ./scripts/Set-GraphPermissions.ps1 -Environment lab
+  ./scripts/Set-GraphPermissions.ps1 -Environment lab -Nivel criacao -WhatIfOnly
 #>
 [CmdletBinding()]
 param(
     [ValidateSet('lab', 'production')] [string] $Environment = 'lab',
-    [ValidateSet('leitura')] [string] $Nivel = 'leitura',
+    [ValidateSet('leitura', 'criacao')] [string] $Nivel = 'leitura',
     [string] $EnvFile = (Join-Path (Split-Path $PSScriptRoot -Parent) '.env'),
     [switch] $WhatIfOnly
 )
@@ -40,8 +46,16 @@ $niveis = [ordered]@{
         'Domain.Read.All'
         'Policy.Read.AuthenticationMethod'
     )
+    criacao = @(
+        'User.ReadWrite.All'
+        'User-LifeCycleInfo.ReadWrite.All'
+        'GroupMember.ReadWrite.All'
+    )
 }
-$desejadas = $niveis[$Nivel]
+# Cada nível inclui os anteriores
+$ordem = @('leitura', 'criacao')
+$desejadas = @()
+foreach ($n in $ordem) { $desejadas += $niveis[$n]; if ($n -eq $Nivel) { break } }
 
 $cfg = Import-DotEnv $EnvFile
 $tenantId = Get-Required $cfg 'AZURE_TENANT_ID'
@@ -83,7 +97,8 @@ foreach ($p in $desejadas) {
 }
 $extras = @($atuaisValores | Where-Object { $_ -and ($desejadas -notcontains $_) })
 foreach ($e in $extras) { Write-Host "  ! $e (concedida, fora deste nível — não será removida)" -ForegroundColor Yellow }
-Write-Host "`nSomente permissões de leitura. Nada será removido."
+if ($Nivel -eq 'leitura') { Write-Host "`nSomente permissões de leitura. Nada será removido." }
+else { Write-Host "`nATENÇÃO: o nível '$Nivel' permite ao portal CRIAR e ALTERAR usuários e grupos. Nada será removido." -ForegroundColor Yellow }
 
 if (-not $faltando) { Write-Host "`nNada a fazer." -ForegroundColor Green; Disconnect-MgGraph | Out-Null; return }
 if ($WhatIfOnly) { Write-Host "`nSomente pré-visualização. Nada foi alterado." -ForegroundColor Yellow; Disconnect-MgGraph | Out-Null; return }

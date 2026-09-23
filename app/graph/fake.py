@@ -145,3 +145,49 @@ class FakeGraphService:
 
     def find_users_by_employee_id(self, employee_id: str) -> list[UserSummary]:
         return [u for u in self.users if u.employee_id and u.employee_id == employee_id]
+
+
+class FakeGraphWriter:
+    """Escritor em memória para desenvolvimento local e testes (DRY_RUN=false + fake)."""
+
+    dry_run = False
+
+    def __init__(self) -> None:
+        self.users: dict[str, dict] = {}
+        self.managers: dict[str, str] = {}
+        self.members: dict[str, set[str]] = {}
+        self.fail_groups: set[str] = set()
+        self.fail_create = False
+        self.calls: list[str] = []
+
+    def create_user(self, body: dict) -> str:
+        self.calls.append("create_user")
+        if self.fail_create:
+            from app.graph.errors import GraphError
+
+            raise GraphError("Graph 400 Request_BadRequest: falha simulada", 400)
+        uid = f"new-{len(self.users) + 1}"
+        self.users[uid] = dict(body)
+        return uid
+
+    def get_user_by_upn(self, upn: str) -> dict | None:
+        for uid, u in self.users.items():
+            if u["userPrincipalName"].lower() == upn.lower():
+                return {"id": uid, **{k: v for k, v in u.items() if k != "passwordProfile"}}
+        return None
+
+    def set_manager(self, user_id: str, manager_id: str) -> None:
+        self.calls.append("set_manager")
+        self.managers[user_id] = manager_id
+
+    def add_group_member(self, group_id: str, user_id: str) -> bool:
+        self.calls.append(f"add:{group_id}")
+        if group_id in self.fail_groups:
+            from app.graph.errors import GraphError
+
+            raise GraphError("Graph 403 Authorization_RequestDenied: falha simulada", 403)
+        s = self.members.setdefault(group_id, set())
+        if user_id in s:
+            return False
+        s.add(user_id)
+        return True

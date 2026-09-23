@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     license_mode: Literal["group", "direct"] = "group"
     tap_lifetime_minutes: int = Field(default=480, ge=10, le=43200)
     license_lead_days: int = Field(default=1, ge=0, le=30)
+    # Proteção: máximo de contas criadas por dia (DRY_RUN=false)
+    provisioning_daily_limit: int = Field(default=20, ge=1, le=1000)
 
     # Solicitações de novo colaborador
     upn_pattern: str = "{nome}.{ultimo_sobrenome}"

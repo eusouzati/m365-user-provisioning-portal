@@ -21,11 +21,24 @@ As permissões de aplicação são concedidas por nível, com `scripts/Set-Graph
 
 Com este nível, o portal **não consegue alterar nada** no Microsoft 365. Além disso, o `GraphService` bloqueia no código qualquer requisição diferente de `GET` (`ReadOnlyViolationError`).
 
+## Nível `criacao` (Sprint 6) — inclui `leitura`
+
+```powershell
+./scripts/Set-GraphPermissions.ps1 -Environment lab -Nivel criacao
+```
+
+| Permissão | Uso no portal |
+|---|---|
+| `User.ReadWrite.All` | Criar a conta (desativada), definir propriedades e gestor |
+| `User-LifeCycleInfo.ReadWrite.All` | `employeeHireDate` (e, na Sprint 8, `employeeLeaveDateTime`) |
+| `GroupMember.ReadWrite.All` | Adicionar aos grupos de acesso do perfil |
+
+Proteções adicionais no código: escrita só existe com `DRY_RUN=false` (`MsGraphWriter`); grupos revalidados antes de cada inclusão; grupos com funções administrativas são recusados (e o Graph também os bloqueia sem `RoleManagement.*`); limite diário de contas (`PROVISIONING_DAILY_LIMIT`).
+
 ## Próximos níveis (planejados)
 
 | Nível | Sprint | Permissões | Motivo |
 |---|---|---|---|
-| `criacao` | 6 | `User.ReadWrite.All`, `User-LifeCycleInfo.ReadWrite.All`, `GroupMember.ReadWrite.All` | Criar conta desativada, definir gestor/datas, adicionar a grupos |
 | `ciclo-de-vida` | 7 | `UserAuthenticationMethod.ReadWrite.All` (+ `LicenseAssignment.ReadWrite.All` só com `LICENSE_MODE=direct`) | Gerar TAP; licença direta |
 | `desligamento` | 8 | `User.RevokeSessions.All` | Revogar sessões |
 

@@ -44,6 +44,13 @@ param protectedGroupIds string = ''
 @allowed(['group', 'direct'])
 param licenseMode string = 'group'
 
+@description('DRY_RUN: true = nenhuma alteração no Microsoft 365 (padrão seguro).')
+param dryRun bool = true
+
+@description('Máximo de contas criadas por dia (proteção).')
+@minValue(1)
+param provisioningDailyLimit int = 20
+
 @description('Tags adicionais.')
 param tags object = {}
 
@@ -73,6 +80,8 @@ module resources 'modules/resources.bicep' = {
     entraAuthFlow: entraAuthFlow
     protectedGroupIds: protectedGroupIds
     licenseMode: licenseMode
+    dryRun: dryRun
+    provisioningDailyLimit: provisioningDailyLimit
     tags: allTags
   }
 }

@@ -13,11 +13,18 @@ from app.config import Settings
 from app.core.requests import NewHireForm
 from app.core.workflow import WorkflowError, approve, reject
 from app.csrf import verify_csrf
-from app.dependencies import get_app_settings, get_directory, get_graph, get_storage
+from app.dependencies import (
+    get_app_settings,
+    get_directory,
+    get_graph,
+    get_storage,
+    get_writer,
+)
 from app.graph.directory import DirectoryCache
 from app.graph.errors import GraphError
 from app.graph.service import GraphService
-from app.routes.requests import load_visible, render_detail
+from app.graph.writer import GraphWriter
+from app.routes.requests import load_visible, render_detail, run_provisioning
 from app.services.onboarding import ReviewError
 from app.services.requests_flow import pessoa, refresh_from_review, review_form
 from app.storage import StorageBackend
@@ -67,6 +74,7 @@ async def approve_request(
     graph: GraphService = Depends(get_graph),
     directory: DirectoryCache = Depends(get_directory),
     storage: StorageBackend = Depends(get_storage),
+    writer: GraphWriter = Depends(get_writer),
     principal: Principal = AprovadorDep,
 ) -> Response:
     req = load_visible(storage, request_id, principal)
@@ -109,7 +117,7 @@ async def approve_request(
         mudancas = refresh_from_review(req, review)
         nota = " ".join([comentario.strip(), *mudancas]).strip()
         approve(req, pessoa(principal), nota)
-        storage.update_request(req)
+        req = storage.update_request(req)
     except WorkflowError as exc:
         return _conflict(request, settings, principal, storage, request_id, str(exc))
     except ConcurrencyError:
@@ -122,6 +130,9 @@ async def approve_request(
             "A solicitação foi alterada por outra pessoa. Confira o status.",
         )
     logger.info("Solicitação %s aprovada por %s", request_id, principal.object_id)
+
+    # Provisionamento logo após a aprovação (em DRY_RUN, apenas simulado).
+    run_provisioning(req, settings=settings, writer=writer, directory=directory, storage=storage)
     return RedirectResponse(f"/solicitacoes/{request_id}?ok=aprovada", status_code=303)
 
 

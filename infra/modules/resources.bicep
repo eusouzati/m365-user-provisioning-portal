@@ -23,6 +23,13 @@ param protectedGroupIds string = ''
 @allowed(['group', 'direct'])
 param licenseMode string = 'group'
 
+@description('DRY_RUN: true = nenhuma alteração no Microsoft 365 (padrão seguro).')
+param dryRun bool = true
+
+@description('Máximo de contas criadas por dia (proteção).')
+@minValue(1)
+param provisioningDailyLimit int = 20
+
 // Sufixo determinístico para nomes que precisam ser globais (Web App, Storage).
 var suffix = take(uniqueString(subscription().id, resourceGroup().id, prefix, environment), 5)
 var isFree = appServiceSku == 'F1'
@@ -152,7 +159,8 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: 'true' }
         { name: 'WEBSITES_PORT', value: '8000' }
         { name: 'ENVIRONMENT', value: environment }
-        { name: 'DRY_RUN', value: 'true' }
+        { name: 'DRY_RUN', value: dryRun ? 'true' : 'false' }
+        { name: 'PROVISIONING_DAILY_LIMIT', value: string(provisioningDailyLimit) }
         { name: 'STORAGE_BACKEND', value: 'azure_table' }
         { name: 'AZURE_STORAGE_TABLE_ENDPOINT', value: storage.properties.primaryEndpoints.table }
         { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }

@@ -7,7 +7,9 @@
 </div>
 
 {% if ok == 'enviada' %}<div class="alerta alerta-ok">Solicitação enviada. Ela agora aguarda aprovação.</div>{% endif %}
-{% if ok == 'aprovada' %}<div class="alerta alerta-ok">Solicitação aprovada.{% if settings.dry_run %} Em DRY_RUN, a conta não será criada — a criação real chega na Sprint 6.{% endif %}</div>{% endif %}
+{% if ok == 'aprovada' %}<div class="alerta alerta-ok">Solicitação aprovada.{% if settings.dry_run %} DRY_RUN ativo: o provisionamento foi apenas simulado; nada foi criado no Microsoft 365.{% endif %}</div>{% endif %}
+{% if ok == 'provisionada' %}<div class="alerta alerta-ok">Provisionamento executado. Confira as etapas abaixo.</div>{% endif %}
+{% if req.status == 'falha_parcial' %}<div class="alerta alerta-erro">Algumas etapas falharam. O que já foi feito foi mantido; um administrador pode reprocessar as etapas pendentes.</div>{% endif %}
 {% if ok == 'rejeitada' %}<div class="alerta alerta-ok">Solicitação rejeitada.</div>{% endif %}
 {% if ok == 'cancelada' %}<div class="alerta alerta-ok">Solicitação cancelada.</div>{% endif %}
 {% if erros %}<div class="alerta alerta-erro" role="alert"><ul>{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
@@ -32,8 +34,39 @@
     <dt>Licença em</dt><dd>{{ req.data_licenca.strftime("%d/%m/%Y") if req.data_licenca else "—" }}</dd>
     <dt>Admissão (ativação)</dt><dd>{{ req.data_admissao.strftime("%d/%m/%Y") }}</dd>
     <dt>Solicitante</dt><dd>{{ req.solicitante.nome }}</dd>
+    {% if req.object_id %}<dt>Object ID (Entra)</dt><dd><code class="pequeno">{{ req.object_id }}</code></dd>{% endif %}
   </dl>
 </section>
+
+{% if req.etapas %}
+<section class="painel">
+  <h2>Provisionamento</h2>
+  <table class="tabela">
+    <thead><tr><th>Etapa</th><th>Status</th><th>Detalhe</th><th>Quando</th></tr></thead>
+    <tbody>
+      {% for e in req.etapas %}
+      <tr>
+        <td>{{ e.nome }}</td>
+        <td><span class="etapa et-{{ e.status }}">{{ etapa_labels[e.status] }}</span></td>
+        <td class="ajuda">{{ e.detalhe }}</td>
+        <td class="ajuda">{{ e.em|data_local(True) if e.em else "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="ajuda">Licença (D-1) e ativação da conta (D0) serão feitas automaticamente a partir da Sprint 7.</p>
+</section>
+{% endif %}
+
+{% if pode_provisionar %}
+<form method="post" action="/solicitacoes/{{ req.id }}/provisionar" class="excluir" data-envio-unico>
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <button class="botao" type="submit">
+    {% if req.status == 'falha_parcial' %}Reprocessar etapas pendentes{% elif settings.dry_run %}Simular provisionamento (DRY_RUN){% else %}Criar conta no Microsoft 365{% endif %}
+  </button>
+  {% if not settings.dry_run and req.status == 'aprovada' %}<p class="ajuda">Atenção: DRY_RUN está desativado — a conta será criada de verdade (desativada e sem licença).</p>{% endif %}
+</form>
+{% endif %}
 
 {% if pode_decidir %}
 <section class="painel">

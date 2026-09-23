@@ -50,7 +50,19 @@ pwsh ./scripts/Deploy-Application.ps1 -Environment lab
 
 O primeiro deploy compila as dependências no App Service e pode levar alguns minutos no plano F1. Ao final, o script valida `/health` e `/health/ready`.
 
-## 5. Solução de problemas
+## 5. Habilitar a criação real de contas
+
+Por padrão o portal roda com `DRY_RUN=true` (nada é alterado no Microsoft 365). Para criar contas:
+
+1. Conceda as permissões de escrita: `pwsh ./scripts/Set-GraphPermissions.ps1 -Environment lab -Nivel criacao`
+2. No `.env`, defina `DRY_RUN=false` (e, se quiser, `PROVISIONING_DAILY_LIMIT`).
+3. Aplique: `pwsh ./scripts/Deploy-Infrastructure.ps1 -Environment lab` (o script avisa que o modo real será ativado).
+4. Aprove uma solicitação de teste (ou, numa já aprovada, use **Criar conta no Microsoft 365** como Administrador).
+5. Confira no Entra admin center: usuário **desativado**, sem licença, com gestor e grupos.
+
+Para voltar ao modo seguro, defina `DRY_RUN=true` e rode `Deploy-Infrastructure.ps1` novamente.
+
+## 6. Solução de problemas
 
 - `/health/ready` com 503 logo após criar a infraestrutura: as permissões RBAC da Managed Identity podem levar até ~10 minutos para propagar.
 - Logs: `az webapp log tail -g rg-<prefixo>-lab -n <webAppName>`.

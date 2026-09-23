@@ -60,9 +60,14 @@ $common = @(
     "entraClientId=$($cfg['ENTRA_APP_CLIENT_ID'])",
     "entraAuthFlow=$(if ($cfg['ENTRA_AUTH_FLOW']) { $cfg['ENTRA_AUTH_FLOW'] } else { 'idtoken' })",
     "protectedGroupIds=$protected",
-    "licenseMode=$(if ($cfg['LICENSE_MODE']) { $cfg['LICENSE_MODE'] } else { 'group' })"
+    "licenseMode=$(if ($cfg['LICENSE_MODE']) { $cfg['LICENSE_MODE'] } else { 'group' })",
+    "dryRun=$(if ($cfg['DRY_RUN'] -eq 'false') { 'false' } else { 'true' })",
+    "provisioningDailyLimit=$(if ($cfg['PROVISIONING_DAILY_LIMIT']) { $cfg['PROVISIONING_DAILY_LIMIT'] } else { '20' })"
 )
 
+if ($cfg['DRY_RUN'] -eq 'false') {
+    Write-Host "`nATENÇÃO: DRY_RUN=false — o portal passará a CRIAR contas reais no Microsoft 365." -ForegroundColor Yellow
+}
 Write-Host "`n== Pré-visualização (what-if) — rg-$prefix-$Environment / $location / plano $AppServiceSku ==" -ForegroundColor Cyan
 az deployment sub what-if --name $deploymentName @common
 if ($LASTEXITCODE -ne 0) {

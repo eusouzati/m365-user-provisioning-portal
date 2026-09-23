@@ -21,10 +21,29 @@ def build_graph(settings: Settings) -> GraphService:
     return MsGraphService(DefaultAzureCredential())
 
 
+def build_writer(settings: Settings):
+    """Escritor do Graph: real somente com DRY_RUN=false."""
+    from app.graph.writer import DryRunWriter
+
+    if settings.dry_run:
+        return DryRunWriter()
+    if settings.graph_backend == "fake":
+        from app.graph.fake import FakeGraphWriter
+
+        return FakeGraphWriter()
+
+    from azure.identity import DefaultAzureCredential
+
+    from app.graph.writer import MsGraphWriter
+
+    return MsGraphWriter(DefaultAzureCredential())
+
+
 __all__ = [
     "GraphError",
     "GraphPermissionError",
     "GraphService",
     "ReadOnlyViolationError",
     "build_graph",
+    "build_writer",
 ]

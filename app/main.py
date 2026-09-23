@@ -14,7 +14,7 @@ from app import __version__
 from app.config import Settings, get_settings
 from app.csrf import CsrfCookieMiddleware
 from app.errors import register_error_handlers
-from app.graph import build_graph
+from app.graph import build_graph, build_writer
 from app.graph.directory import DirectoryCache
 from app.observability import configure_observability
 from app.routes import admin, api, approvals, health, home, requests
@@ -40,6 +40,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.storage = build_storage(settings)
     app.state.graph = build_graph(settings)
     app.state.directory = DirectoryCache(app.state.graph, settings.graph_cache_seconds)
+    app.state.writer = build_writer(settings)  # DryRunWriter enquanto DRY_RUN=true
 
     app.add_middleware(CsrfCookieMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)

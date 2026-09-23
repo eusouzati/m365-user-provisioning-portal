@@ -22,3 +22,8 @@ def get_directory(request: Request):
 def get_graph(request: Request):
     """GraphService (somente leitura)."""
     return request.app.state.graph
+
+
+def get_writer(request: Request):
+    """Escritor do Graph (DryRunWriter enquanto DRY_RUN=true)."""
+    return request.app.state.writer

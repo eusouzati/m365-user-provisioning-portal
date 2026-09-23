@@ -21,6 +21,14 @@
     limpar();
   }
 
+  function aviso(texto) {
+    limpar();
+    const li = document.createElement("li");
+    li.className = "vazio";
+    li.textContent = texto;
+    lista.appendChild(li);
+  }
+
   function mostrar(usuarios) {
     limpar();
     if (!usuarios.length) {
@@ -48,9 +56,16 @@
     timer = setTimeout(function () {
       ultimo = q;
       fetch("/api/diretorio/usuarios?q=" + encodeURIComponent(q), { credentials: "same-origin" })
-        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (r) {
+          if (r.ok) return r.json();
+          if (r.status === 401) throw new Error("Sua sessão expirou. Recarregue a página.");
+          if (r.status === 403) throw new Error("Você não tem permissão para buscar gestores.");
+          throw new Error("Não foi possível consultar o diretório agora. Tente novamente em instantes.");
+        })
         .then(function (dados) { if (q === ultimo) mostrar(dados); })
-        .catch(limpar);
+        .catch(function (err) {
+          if (q === ultimo) aviso(err && err.message ? err.message : "Falha na busca.");
+        });
     }, 300);
   });
 })();

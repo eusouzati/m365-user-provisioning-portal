@@ -97,3 +97,20 @@ enviada ──► aprovada ──► (Sprint 6+) conta_criada ► licenciada ►
 - **Visibilidade**: o solicitante vê só as próprias solicitações; Aprovadores e Administradores veem todas.
 
 Armazenamento (Azure Table `solicitacoes`): `PartitionKey=req` (solicitação), `contador` (sequência diária) e `idem` (chaves de idempotência).
+
+## Provisionamento (Sprint 6)
+
+```text
+Aprovação ──► UserProvisioningService
+               1. criar usuário (accountEnabled=false, sem licença, senha aleatória descartada)
+               2. definir gestor
+               3. adicionar aos grupos de acesso (revalidados no tenant)
+             ──► conta_criada   (todas as etapas ok)
+             ──► falha_parcial  (etapas com falha ficam registradas; Administrador reprocessa)
+```
+
+- `DRY_RUN=true`: o `DryRunWriter` não chama o Graph; as etapas ficam "Simulada".
+- Reprocessar executa só etapas pendentes/falhas. Se o usuário já existe com a mesma matrícula (ex.: timeout depois da criação), ele é reaproveitado; se o UPN pertence a outra pessoa, a etapa falha.
+- Nunca exclui usuários. POST com resposta ambígua (erro de rede/5xx) não é repetido automaticamente.
+- A senha nunca é exibida, registrada ou armazenada; o acesso inicial será por TAP (Sprint 7).
+- O grupo de licença **não** é aplicado agora: fica para D-1 (Sprint 7).

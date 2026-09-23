@@ -85,3 +85,7 @@ code.grande { font-size:22px; background:none; padding:0; }
 .formulario textarea { font:inherit; font-weight:400; padding:8px; border:1px solid var(--borda); border-radius:6px; }
 .espaco { margin-top:24px; }
 button[disabled] { opacity:.6; cursor:wait; }
+.etapa { display:inline-block; font-size:12px; padding:1px 8px; border-radius:10px; background:#eef1f4; color:#57606a; white-space:nowrap; }
+.et-ok { background:#e6f4ea; color:#1e6b34; }
+.et-falhou { background:#ffe8e8; color:#b3261e; }
+.et-simulado { background:#fff4d6; color:#8a5a00; }
