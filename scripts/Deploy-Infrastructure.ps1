@@ -1,5 +1,4 @@
-#Requires -Version 7.0
-<#
+﻿<#
 .SYNOPSIS
   Cria/atualiza a infraestrutura Azure do portal (Bicep, escopo de assinatura).
 
@@ -13,12 +12,14 @@
 .EXAMPLE
   ./scripts/Deploy-Infrastructure.ps1 -Environment lab
   ./scripts/Deploy-Infrastructure.ps1 -Environment lab -WhatIfOnly
+  ./scripts/Deploy-Infrastructure.ps1 -Environment lab -Location eastus2 -WhatIfOnly
 #>
 [CmdletBinding()]
 param(
     [ValidateSet('lab', 'production')] [string] $Environment = 'lab',
     [string] $EnvFile = (Join-Path (Split-Path $PSScriptRoot -Parent) '.env'),
     [ValidateSet('F1', 'B1', 'B2', 'S1', 'P0v3', 'P1v3')] [string] $AppServiceSku,
+    [string] $Location,
     [switch] $WhatIfOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -27,7 +28,7 @@ $ErrorActionPreference = 'Stop'
 $cfg = Import-DotEnv $EnvFile
 $tenantId = Get-Required $cfg 'AZURE_TENANT_ID'
 $subscriptionId = Get-Required $cfg 'AZURE_SUBSCRIPTION_ID'
-$location = Get-Required $cfg 'AZURE_LOCATION'
+$location = if ($Location) { $Location } else { Get-Required $cfg 'AZURE_LOCATION' }
 $prefix = Get-Required $cfg 'RESOURCE_PREFIX'
 if (-not $AppServiceSku) { $AppServiceSku = if ($Environment -eq 'production') { 'B1' } else { 'F1' } }
 
@@ -52,7 +53,9 @@ $common = @(
 
 Write-Host "`n== Pré-visualização (what-if) — rg-$prefix-$Environment / $location / plano $AppServiceSku ==" -ForegroundColor Cyan
 az deployment sub what-if --name $deploymentName @common
-if ($LASTEXITCODE -ne 0) { throw 'Falha no what-if.' }
+if ($LASTEXITCODE -ne 0) {
+    throw "Falha no what-if. Se o erro for 'SubscriptionIsOverQuotaForSku', a assinatura não tem cota de App Service nesta região: teste outra com -Location ou -AppServiceSku B1, ou solicite cota (docs/IMPLANTACAO.md)."
+}
 if ($WhatIfOnly) { Write-Host "`nSomente pré-visualização. Nada foi criado." -ForegroundColor Yellow; return }
 
 $answer = Read-Host "`nDigite SIM para aplicar estas mudanças"

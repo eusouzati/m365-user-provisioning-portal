@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Sprint 0 - Descoberta e validacao do ambiente (SOMENTE LEITURA).
 

@@ -1,5 +1,4 @@
-#Requires -Version 7.0
-<#
+﻿<#
 .SYNOPSIS
   Empacota e publica a aplicação no Azure App Service e valida o /health.
 

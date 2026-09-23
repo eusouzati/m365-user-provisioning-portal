@@ -2,7 +2,7 @@
 
 ## 1. Pré-requisitos
 
-- PowerShell 7+, Azure CLI (`az upgrade`), Bicep (`az bicep install`), Python 3.11+, Git, GitHub CLI.
+- Windows PowerShell 5.1 ou PowerShell 7+, Azure CLI (`az upgrade`), Bicep (`az bicep install`), Python 3.11+, Git, GitHub CLI.
 - Conta com **Owner** na assinatura Azure (necessário para as atribuições de RBAC da Managed Identity).
 - Tenant Entra ID somente nuvem.
 
@@ -55,3 +55,8 @@ O primeiro deploy compila as dependências no App Service e pode levar alguns mi
 - `/health/ready` com 503 logo após criar a infraestrutura: as permissões RBAC da Managed Identity podem levar até ~10 minutos para propagar.
 - Logs: `az webapp log tail -g rg-<prefixo>-lab -n <webAppName>`.
 - Nome de Storage/Web App já em uso: altere `RESOURCE_PREFIX`.
+- `SubscriptionIsOverQuotaForSku` (comum em assinaturas **Free Trial**): a assinatura tem cota 0 de App Service para o plano/região. Opções:
+  1. testar outra região: `-Location eastus2` (o what-if não cria nada);
+  2. testar outro plano: `-AppServiceSku B1` (pago);
+  3. solicitar cota: portal do Azure → **Cotas** → **App Service** → região → plano → *Solicitar aumento*;
+  4. converter a assinatura para pay-as-you-go (o F1 continua gratuito).

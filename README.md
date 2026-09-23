@@ -23,7 +23,7 @@ Desligamento: desativar conta, revogar sessões, remover grupos e, após N dias,
 | Microsoft Entra ID | Free (núcleo) · P1 recomendado (licenciamento por grupo) · Governance opcional (Lifecycle Workflows) |
 | Tenant | Somente nuvem (sem sincronização com AD local) |
 | Azure | Qualquer assinatura (inclusive Free Trial para laboratório) |
-| Ferramentas | PowerShell 7+, Azure CLI + Bicep, Python 3.11+, Git, GitHub CLI |
+| Ferramentas | Windows PowerShell 5.1 ou PowerShell 7+, Azure CLI + Bicep, Python 3.11+, Git, GitHub CLI |
 
 ## Início rápido (laboratório)
 

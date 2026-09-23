@@ -1,4 +1,4 @@
-# Funções compartilhadas pelos scripts. Uso: . "$PSScriptRoot/Common.ps1"
+﻿# Funções compartilhadas pelos scripts. Uso: . "$PSScriptRoot/Common.ps1"
 Set-StrictMode -Version Latest
 
 function Import-DotEnv {
