@@ -33,6 +33,10 @@ param logDailyCapGb int = 1
 @description('Client ID do App Registration do portal (Sprint 2). Vazio = login não configurado.')
 param entraClientId string = ''
 
+@description('Fluxo de login: idtoken (padrão, GA) ou fic (preview).')
+@allowed(['idtoken', 'fic'])
+param entraAuthFlow string = 'idtoken'
+
 @description('Tags adicionais.')
 param tags object = {}
 
@@ -59,6 +63,7 @@ module resources 'modules/resources.bicep' = {
     timezone: timezone
     logDailyCapGb: logDailyCapGb
     entraClientId: entraClientId
+    entraAuthFlow: entraAuthFlow
     tags: allTags
   }
 }

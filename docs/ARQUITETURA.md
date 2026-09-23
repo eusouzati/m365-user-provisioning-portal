@@ -45,7 +45,7 @@ Application Insights / Log Analytics (sem dados sensíveis)
 ```text
 Navegador ──► App Service Authentication (Easy Auth)
                  │  login Entra ID (somente este tenant)
-                 │  sem Client Secret: Managed Identity como credencial federada
+                 │  sem Client Secret: fluxo de ID token (padrão) ou Managed Identity (preview)
                  ▼
              FastAPI recebe X-MS-CLIENT-PRINCIPAL
                  │  confia no cabeçalho só se WEBSITE_AUTH_ENABLED=True

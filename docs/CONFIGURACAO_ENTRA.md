@@ -8,13 +8,22 @@
 |---|---|---|
 | App Registration | `<prefixo>-portal-<ambiente>` | Somente este tenant; sem Client Secret |
 | Enterprise Application | mesmo nome | `appRoleAssignmentRequired = false` (todo o tenant pode entrar; papéis controlam o acesso) |
-| Credencial federada | `managed-identity-id-<prefixo>-<ambiente>` | Emissor `https://login.microsoftonline.com/<tenant>/v2.0`, sujeito = Object ID da Managed Identity, audiência `api://AzureADTokenExchange` |
+| Credencial federada (só `-AuthFlow fic`) | `managed-identity-id-<prefixo>-<ambiente>` | Emissor `https://login.microsoftonline.com/<tenant>/v2.0`, sujeito = Object ID da Managed Identity, audiência `api://AzureADTokenExchange` |
 | Grupo de segurança | `<PREFIXO>-Solicitantes-RH` | Papel `Provisionamento.Solicitante` |
 | Grupo de segurança | `<PREFIXO>-Aprovadores` | Papel `Provisionamento.Aprovador` |
 | Grupo de segurança | `<PREFIXO>-Administradores` | Papel `Provisionamento.Administrador` |
 
 Permissão pedida pelo App Registration: apenas `User.Read` (delegada) — para o login.
 As permissões de aplicação do Microsoft Graph (criar usuários etc.) serão concedidas à Managed Identity a partir da Sprint 3, uma a uma.
+
+## Fluxo de login (sem segredo nos dois casos)
+
+| `ENTRA_AUTH_FLOW` | Como funciona | Status |
+|---|---|---|
+| `idtoken` (padrão) | O App Service recebe só o ID token (`form_post`). App Registration com emissão de ID token habilitada. | GA — recomendado |
+| `fic` | O App Service troca o código por tokens usando a Managed Identity como credencial federada. | Preview no App Service; falhou no laboratório do projeto (401 no callback) |
+
+O portal não precisa de access token do usuário: as chamadas ao Microsoft Graph usam a Managed Identity do aplicativo. Por isso o fluxo de ID token é suficiente.
 
 ## Passo a passo
 
@@ -61,6 +70,7 @@ Adicione ou remova membros dos três grupos pelo Entra admin center. Não é pre
 
 ## Solução de problemas
 
+- **HTTP 401 em `/.auth/login/aad/callback`**: com `fic`, a troca do código falhou. Volte para `idtoken` (`New-EntraApplication.ps1 -AuthFlow idtoken` e `Deploy-Infrastructure.ps1`). O motivo exato aparece em Entra admin center → Monitoramento → Logs de entrada → aba *Entradas de identidade gerenciada* / *Entradas de entidade de serviço*.
 - **AADSTS700213 / erro de credencial federada** no login: confira se a credencial federada existe no App Registration com o *Object (principal) ID* da Managed Identity e se o App Setting `OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID` contém o *Client ID* da Managed Identity. Esse recurso do App Service está em *preview*; como alternativa temporária é possível usar um Client Secret guardado no Key Vault (não recomendado).
 - **Papel não aparece**: saia (`/.auth/logout`) e entre novamente; confira `/api/me`.
 - **"autenticação do App Service está desativada" nos logs**: rode `Deploy-Infrastructure.ps1` depois de gravar `ENTRA_APP_CLIENT_ID` no `.env`.

@@ -12,10 +12,15 @@ param tags object
 @description('Client ID do App Registration do portal. Vazio = login ainda não configurado.')
 param entraClientId string = ''
 
+@description('Fluxo de login do App Service: idtoken (GA, sem segredo) ou fic (Managed Identity como credencial federada — preview).')
+@allowed(['idtoken', 'fic'])
+param entraAuthFlow string = 'idtoken'
+
 // Sufixo determinístico para nomes que precisam ser globais (Web App, Storage).
 var suffix = take(uniqueString(subscription().id, resourceGroup().id, prefix, environment), 5)
 var isFree = appServiceSku == 'F1'
 var authEnabled = !empty(entraClientId)
+var useFic = entraAuthFlow == 'fic'
 
 // IDs de funções internas do Azure
 var storageTableDataContributor = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
@@ -147,8 +152,8 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'AZURE_TENANT_ID', value: tenant().tenantId }
         { name: 'AUTH_MODE', value: 'easyauth' }
         { name: 'ENTRA_APP_CLIENT_ID', value: entraClientId }
-        // Login do App Service usa a Managed Identity como credencial federada (sem Client Secret)
-        { name: 'OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID', value: identity.properties.clientId }
+        // Somente no fluxo 'fic': o login usa a Managed Identity como credencial federada
+        { name: 'OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID', value: useFic ? identity.properties.clientId : '' }
         { name: 'M365_DEFAULT_DOMAIN', value: m365DefaultDomain }
         { name: 'M365_DEFAULT_USAGE_LOCATION', value: usageLocation }
         { name: 'TIMEZONE', value: timezone }
@@ -173,11 +178,14 @@ resource authSettings 'Microsoft.Web/sites/config@2023-12-01' = if (authEnabled)
     identityProviders: {
       azureActiveDirectory: {
         enabled: true
-        registration: {
-          clientId: entraClientId
-          clientSecretSettingName: 'OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID'
-          openIdIssuer: '${az.environment().authentication.loginEndpoint}${tenant().tenantId}/v2.0'
-        }
+        // Sem clientSecretSettingName o App Service usa o fluxo de ID token (form_post), sem segredo.
+        registration: union(
+          {
+            clientId: entraClientId
+            openIdIssuer: '${az.environment().authentication.loginEndpoint}${tenant().tenantId}/v2.0'
+          },
+          useFic ? { clientSecretSettingName: 'OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID' } : {}
+        )
         validation: {
           allowedAudiences: [entraClientId, 'api://${entraClientId}']
         }

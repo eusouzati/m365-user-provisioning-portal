@@ -49,7 +49,8 @@ $common = @(
     "m365DefaultDomain=$($cfg['M365_DEFAULT_DOMAIN'])",
     "usageLocation=$(if ($cfg['M365_DEFAULT_USAGE_LOCATION']) { $cfg['M365_DEFAULT_USAGE_LOCATION'] } else { 'BR' })",
     "timezone=$(if ($cfg['TIMEZONE']) { $cfg['TIMEZONE'] } else { 'America/Sao_Paulo' })",
-    "entraClientId=$($cfg['ENTRA_APP_CLIENT_ID'])"
+    "entraClientId=$($cfg['ENTRA_APP_CLIENT_ID'])",
+    "entraAuthFlow=$(if ($cfg['ENTRA_AUTH_FLOW']) { $cfg['ENTRA_AUTH_FLOW'] } else { 'idtoken' })"
 )
 
 Write-Host "`n== Pré-visualização (what-if) — rg-$prefix-$Environment / $location / plano $AppServiceSku ==" -ForegroundColor Cyan

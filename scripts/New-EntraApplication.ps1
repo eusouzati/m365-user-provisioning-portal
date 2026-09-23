@@ -11,7 +11,7 @@
     - App Registration "<prefixo>-portal-<ambiente>" (somente este tenant)
     - App Roles: Provisionamento.Solicitante / .Aprovador / .Administrador
     - Enterprise Application (service principal)
-    - Credencial federada: Managed Identity do App Service -> App Registration
+    - (somente -AuthFlow fic) Credencial federada: Managed Identity do App Service -> App Registration
     - Grupos de segurança <PREFIXO>-Solicitantes-RH / -Aprovadores / -Administradores
     - Atribuição de cada App Role ao seu grupo (requer Entra ID P1 ou superior)
   Ao final grava ENTRA_APP_CLIENT_ID no .env e salva entra-outputs.<ambiente>.json.
@@ -29,6 +29,8 @@ param(
     [ValidateSet('lab', 'production')] [string] $Environment = 'lab',
     [string] $EnvFile = (Join-Path (Split-Path $PSScriptRoot -Parent) '.env'),
     [ValidateSet('Solicitantes', 'Aprovadores', 'Administradores')] [string[]] $AddMeToGroups = @(),
+    # idtoken: fluxo de ID token do App Service (GA, sem segredo) · fic: Managed Identity como credencial federada (preview)
+    [ValidateSet('idtoken', 'fic')] [string] $AuthFlow = 'idtoken',
     [switch] $WhatIfOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -115,7 +117,8 @@ Write-Host "`n== Plano ==" -ForegroundColor Cyan
 Show-Item "App Registration '$appName' (somente este tenant; redirect $redirectUri)" $app
 if ($app) { Write-Host "  ~ Garantir App Roles, redirect URI e permissões do App Registration" -ForegroundColor Yellow }
 Show-Item "Enterprise Application (service principal)" $sp
-Show-Item "Credencial federada '$ficName' (Managed Identity $miPrincipalId)" $fic
+if ($AuthFlow -eq 'fic') { Show-Item "Credencial federada '$ficName' (Managed Identity $miPrincipalId)" $fic }
+else { Write-Host "  ~ Fluxo de login: ID token (emissão de ID token habilitada no App Registration; sem segredo)" -ForegroundColor Yellow }
 foreach ($r in $roleDefs) { Show-Item "Grupo de segurança '$($r.group)' -> App Role $($r.value)" $groups[$r.key] }
 foreach ($g in $AddMeToGroups) { Write-Host "  + Adicionar $($ctx.Account) ao grupo de $g (se ainda não for membro)" -ForegroundColor Green }
 Write-Host "  ~ Gravar ENTRA_APP_CLIENT_ID no .env e salvar entra-outputs.$Environment.json" -ForegroundColor Yellow
@@ -147,7 +150,7 @@ $appBody = [ordered]@{
         homePageUrl           = $webAppUrl
         logoutUrl             = "$webAppUrl/.auth/logout"
         redirectUris          = $redirects
-        implicitGrantSettings = [ordered]@{ enableIdTokenIssuance = $false; enableAccessTokenIssuance = $false }
+        implicitGrantSettings = [ordered]@{ enableIdTokenIssuance = ($AuthFlow -eq 'idtoken'); enableAccessTokenIssuance = $false }
     }
     appRoles               = $appRoles
     requiredResourceAccess = @([ordered]@{ resourceAppId = $graphAppId; resourceAccess = @([ordered]@{ id = $userReadScope; type = 'Scope' }) })
@@ -173,7 +176,7 @@ if (-not $sp) {
 }
 
 # ---------- Credencial federada ----------
-if (-not $fic) {
+if ($AuthFlow -eq 'fic' -and -not $fic) {
     Write-Host 'Criando credencial federada com a Managed Identity...' -ForegroundColor Cyan
     Invoke-Graph -Method POST -Uri "v1.0/applications/$($app.id)/federatedIdentityCredentials" -Body ([ordered]@{
             name        = $ficName
@@ -239,10 +242,12 @@ $out | ConvertTo-Json -Depth 5 | Set-Content -Path (Join-Path $root "entra-outpu
 $lines = @(Get-Content $EnvFile -Encoding UTF8)
 if ($lines -match '^\s*ENTRA_APP_CLIENT_ID\s*=') { $lines = $lines -replace '^\s*ENTRA_APP_CLIENT_ID\s*=.*$', "ENTRA_APP_CLIENT_ID=$($app.appId)" }
 else { $lines += "ENTRA_APP_CLIENT_ID=$($app.appId)" }
+if ($lines -match '^\s*ENTRA_AUTH_FLOW\s*=') { $lines = $lines -replace '^\s*ENTRA_AUTH_FLOW\s*=.*$', "ENTRA_AUTH_FLOW=$AuthFlow" }
+else { $lines += "ENTRA_AUTH_FLOW=$AuthFlow" }
 $lines | Set-Content -Path $EnvFile -Encoding UTF8
 
 Disconnect-MgGraph | Out-Null
-Write-Host "`nPronto. ENTRA_APP_CLIENT_ID=$($app.appId) gravado no .env." -ForegroundColor Green
+Write-Host "`nPronto. ENTRA_APP_CLIENT_ID=$($app.appId) e ENTRA_AUTH_FLOW=$AuthFlow gravados no .env." -ForegroundColor Green
 Write-Host 'Próximos passos (ativam o login no App Service):'
 Write-Host "  ./scripts/Deploy-Infrastructure.ps1 -Environment $Environment"
 Write-Host "  ./scripts/Deploy-Application.ps1 -Environment $Environment"
