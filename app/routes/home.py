@@ -31,15 +31,6 @@ def home(
     return _page(request, "index.html", settings, principal)
 
 
-@router.get("/solicitacoes", response_class=HTMLResponse)
-def solicitacoes(
-    request: Request,
-    settings: Settings = Depends(get_app_settings),
-    principal: Principal = Depends(require_roles(Roles.SOLICITANTE)),
-) -> HTMLResponse:
-    return _building(request, settings, principal, "Solicitações", 4)
-
-
 @router.get("/aprovacoes", response_class=HTMLResponse)
 def aprovacoes(
     request: Request,

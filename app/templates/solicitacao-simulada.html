@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Solicitação simulada · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Solicitação simulada</h1>
+<div class="alerta alerta-ok">Todos os dados foram validados novamente no servidor.</div>
+<div class="alerta alerta-aviso"><strong>Nada foi gravado e nenhum usuário foi criado.</strong> O registro da solicitação e o fluxo de aprovação chegam na Sprint 5.</div>
+<section class="painel">
+  <dl class="grade">
+    <dt>Colaborador</dt><dd>{{ r.names.display_name }}</dd>
+    <dt>UPN que seria usado</dt><dd><code>{{ r.names.user_principal_name }}</code></dd>
+    <dt>Admissão</dt><dd>{{ r.data_ativacao.strftime("%d/%m/%Y") }}</dd>
+    <dt>Perfil</dt><dd>{{ r.perfil.nome }}</dd>
+  </dl>
+</section>
+<p><a class="botao" href="/solicitacoes/novo">Nova solicitação</a></p>
+{% endblock %}

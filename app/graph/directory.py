@@ -33,6 +33,9 @@ class DirectoryCache:
     def groups(self, refresh: bool = False):
         return self._cached("groups", self.graph.list_groups, refresh)
 
+    def domains(self, refresh: bool = False):
+        return self._cached("domains", self.graph.list_domains, refresh)
+
     def skus(self, refresh: bool = False):
         return self._cached("skus", self.graph.list_subscribed_skus, refresh)
 

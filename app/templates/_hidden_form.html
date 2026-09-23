@@ -1,0 +1,3 @@
+<input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+{% for k, v in dados.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">
+{% endfor %}

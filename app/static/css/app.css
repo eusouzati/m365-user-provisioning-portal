@@ -63,3 +63,12 @@ code.pequeno { font-size:11px; }
 .acoes { display:flex; gap:8px; }
 .excluir { margin-top:16px; }
 @media (max-width: 600px) { .grade { grid-template-columns:1fr; } .formulario .linha { grid-template-columns:1fr; } }
+.formulario .linha.tres { grid-template-columns:1fr 1fr 1fr; }
+.resultados { list-style:none; margin:0; padding:0; border:1px solid var(--borda); border-radius:6px; max-height:220px; overflow-y:auto; }
+.resultados:empty { display:none; }
+.resultados li button { width:100%; text-align:left; background:#fff; border:0; border-bottom:1px solid var(--borda); padding:8px; font:inherit; cursor:pointer; }
+.resultados li button:hover, .resultados li button:focus { background:#e7f0ff; }
+.resultados li.vazio { padding:8px; color:#57606a; font-size:14px; }
+.linha-tempo { line-height:1.8; margin:0; padding-left:20px; }
+.acoes form { display:inline; }
+@media (max-width: 600px) { .formulario .linha.tres { grid-template-columns:1fr; } }

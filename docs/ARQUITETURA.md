@@ -65,3 +65,17 @@ Navegador ──► App Service Authentication (Easy Auth)
 - Leituras do tenant ficam em cache por `GRAPH_CACHE_SECONDS` (padrão 300 s); o botão "Atualizar" força nova leitura.
 - Perfis de onboarding ficam no Azure Table `perfis`. Ao salvar, os IDs recebidos do navegador são **revalidados contra o tenant** (grupo existe, é de segurança, não é dinâmico, não tem funções administrativas, não é grupo de papel do portal).
 - Formulários usam proteção CSRF (cookie HttpOnly/SameSite=Strict + campo oculto + verificação de `Origin`).
+
+## Solicitação de novo colaborador (Sprint 4)
+
+```text
+Formulário (RH) ──► POST /solicitacoes/revisar ──► tela de revisão
+                         │ valida campos (limites do Graph)
+                         │ valida perfil ativo e tipo, gestor ativo, matrícula única, datas
+                         │ gera UPN e resolve colisões consultando o diretório
+                         ▼
+                   POST /solicitacoes/enviar ──► recalcula TUDO de novo no servidor
+                                                 (Sprint 4: simulação — nada gravado)
+```
+
+Regras de nome: [REGRAS_DE_NOME.md](REGRAS_DE_NOME.md).

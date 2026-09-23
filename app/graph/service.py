@@ -30,7 +30,7 @@ GRAPH_BASE = "https://graph.microsoft.com/v1.0"
 GRAPH_SCOPE = "https://graph.microsoft.com/.default"
 RETRY_STATUS = {429, 500, 502, 503, 504}
 
-_USER_FIELDS = "id,displayName,userPrincipalName,mail,jobTitle,department,accountEnabled"
+_USER_FIELDS = "id,displayName,userPrincipalName,mail,jobTitle,department,accountEnabled,employeeId"
 _GROUP_FIELDS = (
     "id,displayName,description,securityEnabled,mailEnabled,groupTypes,"
     "isAssignableToRole,assignedLicenses,mail"
@@ -46,6 +46,7 @@ class GraphService(Protocol):
     def get_user(self, user_id: str) -> UserSummary | None: ...
     def search_users(self, query: str, top: int = 10) -> list[UserSummary]: ...
     def find_address_conflicts(self, address: str, mail_nickname: str) -> list[AddressConflict]: ...
+    def find_users_by_employee_id(self, employee_id: str) -> list[UserSummary]: ...
 
 
 def odata_str(value: str) -> str:
@@ -67,6 +68,7 @@ def _user(d: dict[str, Any]) -> UserSummary:
         job_title=d.get("jobTitle") or "",
         department=d.get("department") or "",
         account_enabled=bool(d.get("accountEnabled", True)),
+        employee_id=d.get("employeeId") or "",
     )
 
 
@@ -302,6 +304,18 @@ class MsGraphService:
                 )
             )
         return conflicts
+
+    def find_users_by_employee_id(self, employee_id: str) -> list[UserSummary]:
+        items = self._get_all(
+            "users",
+            {
+                "$filter": f"employeeId eq '{odata_str(employee_id)}'",
+                "$select": _USER_FIELDS,
+                "$count": "true",
+            },
+            advanced=True,
+        )
+        return [_user(u) for u in items]
 
 
 def _which(obj: dict[str, Any], address: str, nickname: str) -> str:

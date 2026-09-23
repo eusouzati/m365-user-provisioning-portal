@@ -70,6 +70,7 @@ class UserSummary:
     job_title: str = ""
     department: str = ""
     account_enabled: bool = True
+    employee_id: str = ""
 
 
 @dataclass(frozen=True)

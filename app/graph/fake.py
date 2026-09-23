@@ -83,6 +83,16 @@ class FakeGraphService:
                 "joao.silva@contoso.com",
                 "Analista",
                 "Financeiro",
+                employee_id="1001",
+            ),
+            UserSummary(
+                "u-4",
+                "Carla Desligada",
+                "carla@contoso.com",
+                "carla@contoso.com",
+                "Gerente",
+                "RH",
+                account_enabled=False,
             ),
         ]
 
@@ -113,11 +123,11 @@ class FakeGraphService:
         q = query.strip().lower()
         if len(q) < 2:
             return []
-        hits = [
-            u
-            for u in self.users
-            if q in u.display_name.lower() or q in u.user_principal_name.lower()
-        ]
+        hits = []
+        for u in self.users:
+            texto = f"{u.display_name} {u.user_principal_name}".lower()
+            if u.account_enabled and q in texto:
+                hits.append(u)
         return hits[:top]
 
     def find_address_conflicts(self, address: str, mail_nickname: str) -> list[AddressConflict]:
@@ -132,3 +142,6 @@ class FakeGraphService:
             if g.mail and (g.mail.lower() == a or g.mail.split("@")[0].lower() == n):
                 out.append(AddressConflict("grupo", g.id, g.display_name, "mail"))
         return out
+
+    def find_users_by_employee_id(self, employee_id: str) -> list[UserSummary]:
+        return [u for u in self.users if u.employee_id and u.employee_id == employee_id]

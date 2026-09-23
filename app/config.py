@@ -51,6 +51,13 @@ class Settings(BaseSettings):
     graph_cache_seconds: int = Field(default=300, ge=0, le=3600)
     license_mode: Literal["group", "direct"] = "group"
     tap_lifetime_minutes: int = Field(default=480, ge=10, le=43200)
+    license_lead_days: int = Field(default=1, ge=0, le=30)
+
+    # Solicitações de novo colaborador
+    upn_pattern: str = "{nome}.{ultimo_sobrenome}"
+    upn_particles: str = "da,das,de,del,der,di,do,dos,du,e,la,le,van,von,y"
+    hire_date_past_days: int = Field(default=30, ge=0, le=365)
+    hire_date_future_days: int = Field(default=365, ge=1, le=730)
     # Grupos que NUNCA podem ser usados em perfis (ex.: grupos dos papéis do portal)
     protected_group_ids: str = ""
 
@@ -68,6 +75,16 @@ class Settings(BaseSettings):
         if not value.isalpha():
             raise ValueError("M365_DEFAULT_USAGE_LOCATION deve ser um código ISO de 2 letras")
         return value.upper()
+
+    @field_validator("upn_pattern")
+    @classmethod
+    def _upn_pattern_valido(cls, value: str) -> str:
+        from app.core.naming import NamingError, validate_pattern
+
+        try:
+            return validate_pattern(value)
+        except NamingError as exc:
+            raise ValueError(f"UPN_PATTERN inválido: {exc}") from exc
 
     @field_validator("timezone")
     @classmethod
@@ -106,6 +123,10 @@ class Settings(BaseSettings):
         return frozenset(
             g.strip().lower() for g in self.protected_group_ids.split(",") if g.strip()
         )
+
+    @property
+    def particles(self) -> frozenset[str]:
+        return frozenset(p.strip().lower() for p in self.upn_particles.split(",") if p.strip())
 
     @property
     def dev_roles(self) -> frozenset[str]:

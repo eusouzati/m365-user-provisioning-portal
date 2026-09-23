@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Novo colaborador · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Novo colaborador</h1>
+
+{% if not perfis %}
+<div class="alerta alerta-aviso">Nenhum perfil de onboarding ativo. Peça ao administrador para cadastrar um em Administração → Perfis de onboarding.</div>
+{% endif %}
+
+{% if erros %}
+<div class="alerta alerta-erro" role="alert">
+  <strong>Corrija os itens abaixo:</strong>
+  <ul>{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<form class="formulario" method="post" action="/solicitacoes/revisar" autocomplete="off">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+
+  <fieldset>
+    <legend>Identificação</legend>
+    <div class="linha">
+      <label>Nome <input name="nome" required maxlength="64" value="{{ dados.nome }}" placeholder="João"></label>
+      <label>Sobrenome <input name="sobrenome" required maxlength="64" value="{{ dados.sobrenome }}" placeholder="da Silva"></label>
+    </div>
+    <label>Nome de exibição <span class="ajuda">(opcional — padrão: nome + sobrenome)</span>
+      <input name="nome_exibicao" maxlength="256" value="{{ dados.nome_exibicao }}">
+    </label>
+    <div class="linha">
+      <label>Matrícula <input name="matricula" required maxlength="16" pattern="[A-Za-z0-9._\-]+" value="{{ dados.matricula }}"></label>
+      <label>Tipo de colaborador
+        <select name="tipo_colaborador" required>
+          <option value="">Selecione…</option>
+          {% for k, v in tipos.items() %}<option value="{{ k }}" {% if dados.tipo_colaborador == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Cargo e organização</legend>
+    <div class="linha">
+      <label>Cargo <input name="cargo" required maxlength="128" value="{{ dados.cargo }}"></label>
+      <label>Departamento <input name="departamento" required maxlength="64" value="{{ dados.departamento }}"></label>
+    </div>
+    <div class="linha">
+      <label>Empresa <input name="empresa" maxlength="64" value="{{ dados.empresa }}"></label>
+      <label>Unidade <input name="unidade" maxlength="128" value="{{ dados.unidade }}"></label>
+    </div>
+    <div class="linha tres">
+      <label>Cidade <input name="cidade" maxlength="128" value="{{ dados.cidade }}"></label>
+      <label>Estado <input name="estado" maxlength="128" value="{{ dados.estado }}"></label>
+      <label>País <input name="pais" maxlength="128" value="{{ dados.pais }}"></label>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Admissão</legend>
+    <div class="linha">
+      <label>Data de admissão <input type="date" name="data_admissao" required value="{{ dados.data_admissao }}" min="{{ data_min }}" max="{{ data_max }}"></label>
+      <label>Perfil de onboarding
+        <select name="perfil_id" required>
+          <option value="">Selecione…</option>
+          {% for p in perfis %}<option value="{{ p.id }}" {% if dados.perfil_id == p.id %}selected{% endif %}>{{ p.nome }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    <div class="gestor">
+      <label>Gestor
+        <input id="gestor_busca" type="search" placeholder="Digite o nome do gestor…" aria-describedby="gestor_escolhido">
+      </label>
+      <ul id="gestor_resultados" class="resultados" aria-live="polite"></ul>
+      <p class="ajuda">Selecionado: <strong id="gestor_escolhido">{{ dados.gestor_nome or "nenhum" }}</strong></p>
+      <input type="hidden" id="gestor_id" name="gestor_id" value="{{ dados.gestor_id }}">
+      <input type="hidden" id="gestor_nome" name="gestor_nome" value="{{ dados.gestor_nome }}">
+    </div>
+  </fieldset>
+
+  <div class="acoes">
+    <button class="botao" type="submit">Revisar</button>
+    <a class="botao secundario" href="/solicitacoes">Cancelar</a>
+  </div>
+</form>
+<script src="{{ url_for('static', path='js/gestor.js') }}" defer></script>
+{% endblock %}

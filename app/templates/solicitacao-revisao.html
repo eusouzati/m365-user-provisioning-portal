@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Revisar solicitação · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Revisar criação do usuário</h1>
+{% for a in r.avisos %}<div class="alerta alerta-aviso">{{ a }}</div>{% endfor %}
+
+<section class="painel">
+  <h2>Conta</h2>
+  <dl class="grade">
+    <dt>Nome completo</dt><dd>{{ r.names.given_name }} {{ r.names.surname }}</dd>
+    <dt>Nome de exibição</dt><dd>{{ r.names.display_name }}</dd>
+    <dt>UPN (login)</dt><dd><code>{{ r.names.user_principal_name }}</code></dd>
+    <dt>E-mail</dt><dd><code>{{ r.names.mail }}</code></dd>
+    <dt>Alias (mailNickname)</dt><dd><code>{{ r.names.mail_nickname }}</code></dd>
+    <dt>Matrícula</dt><dd>{{ r.form.matricula }}</dd>
+    <dt>Tipo</dt><dd>{{ r.tipo_label }}</dd>
+  </dl>
+</section>
+
+<section class="painel">
+  <h2>Organização</h2>
+  <dl class="grade">
+    <dt>Cargo</dt><dd>{{ r.form.cargo }}</dd>
+    <dt>Departamento</dt><dd>{{ r.form.departamento }}</dd>
+    {% if r.form.empresa %}<dt>Empresa</dt><dd>{{ r.form.empresa }}</dd>{% endif %}
+    {% if r.form.unidade %}<dt>Unidade</dt><dd>{{ r.form.unidade }}</dd>{% endif %}
+    {% if r.form.cidade or r.form.estado or r.form.pais %}<dt>Local</dt><dd>{{ [r.form.cidade, r.form.estado, r.form.pais]|select|join(" · ") }}</dd>{% endif %}
+    <dt>Gestor</dt><dd>{{ r.gestor.display_name }} <span class="ajuda">({{ r.gestor.user_principal_name }})</span></dd>
+  </dl>
+</section>
+
+<section class="painel">
+  <h2>Acessos e licença</h2>
+  <dl class="grade">
+    <dt>Perfil</dt><dd>{{ r.perfil.nome }}</dd>
+    <dt>Grupos</dt><dd>{% for g in r.perfil.grupos_acesso %}{{ g.nome }}{% if not loop.last %}, {% endif %}{% else %}Nenhum{% endfor %}</dd>
+    <dt>Licença</dt><dd>{% if r.perfil.grupo_licenca %}{{ r.perfil.grupo_licenca.nome }}{% elif r.perfil.sku_licenca %}{{ r.perfil.sku_licenca.part_number }}{% else %}Sem licença{% endif %}</dd>
+  </dl>
+</section>
+
+<section class="painel">
+  <h2>Linha do tempo</h2>
+  <ol class="linha-tempo">
+    <li><strong>Após a aprovação:</strong> conta criada <em>desativada</em>, sem licença, com gestor e grupos.</li>
+    {% if r.data_licenca %}<li><strong>{{ "Imediatamente" if r.licenca_imediata else r.data_licenca.strftime("%d/%m/%Y") }}:</strong> licença atribuída (caixa de correio preparada).</li>{% endif %}
+    <li><strong>{{ "Imediatamente" if r.ativacao_imediata else r.data_ativacao.strftime("%d/%m/%Y") }} (admissão):</strong> conta ativada; o gestor gera o acesso inicial (TAP) no portal.</li>
+  </ol>
+</section>
+
+{% if settings.dry_run %}<div class="alerta alerta-aviso"><strong>DRY_RUN ativo.</strong> Ao enviar, nada será gravado nem criado no Microsoft 365.</div>{% endif %}
+
+<div class="acoes">
+  <form method="post" action="/solicitacoes/enviar">{% include "_hidden_form.html" %}<button class="botao" type="submit">Enviar solicitação</button></form>
+  <form method="post" action="/solicitacoes/editar">{% include "_hidden_form.html" %}<button class="botao secundario" type="submit">Voltar e editar</button></form>
+</div>
+{% endblock %}
