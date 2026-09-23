@@ -48,7 +48,8 @@ $common = @(
     "appServiceSku=$AppServiceSku",
     "m365DefaultDomain=$($cfg['M365_DEFAULT_DOMAIN'])",
     "usageLocation=$(if ($cfg['M365_DEFAULT_USAGE_LOCATION']) { $cfg['M365_DEFAULT_USAGE_LOCATION'] } else { 'BR' })",
-    "timezone=$(if ($cfg['TIMEZONE']) { $cfg['TIMEZONE'] } else { 'America/Sao_Paulo' })"
+    "timezone=$(if ($cfg['TIMEZONE']) { $cfg['TIMEZONE'] } else { 'America/Sao_Paulo' })",
+    "entraClientId=$($cfg['ENTRA_APP_CLIENT_ID'])"
 )
 
 Write-Host "`n== Pré-visualização (what-if) — rg-$prefix-$Environment / $location / plano $AppServiceSku ==" -ForegroundColor Cyan
@@ -71,4 +72,7 @@ $outputs | ConvertTo-Json | Set-Content -Path (Get-OutputsPath $Environment) -En
 
 Write-Host "`nInfraestrutura pronta:" -ForegroundColor Green
 $outputs.GetEnumerator() | ForEach-Object { Write-Host ("  {0,-28} {1}" -f $_.Key, $_.Value) }
+if (-not $outputs['authEnabled']) {
+    Write-Host "`nLogin ainda não configurado. Rode ./scripts/New-EntraApplication.ps1 -Environment $Environment e depois este script novamente." -ForegroundColor Yellow
+}
 Write-Host "`nPróximo passo: ./scripts/Deploy-Application.ps1 -Environment $Environment"

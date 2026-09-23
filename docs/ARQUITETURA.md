@@ -39,3 +39,22 @@ Application Insights / Log Analytics (sem dados sensíveis)
 | Storage Account | `st<prefixo><lab\|prd><sufixo>` (tabelas `solicitacoes`, `auditoria`; fila `tarefas`) |
 | Log Analytics | `log-<prefixo>-<ambiente>` |
 | Application Insights | `appi-<prefixo>-<ambiente>` |
+
+## Autenticação e autorização (Sprint 2)
+
+```text
+Navegador ──► App Service Authentication (Easy Auth)
+                 │  login Entra ID (somente este tenant)
+                 │  sem Client Secret: Managed Identity como credencial federada
+                 ▼
+             FastAPI recebe X-MS-CLIENT-PRINCIPAL
+                 │  confia no cabeçalho só se WEBSITE_AUTH_ENABLED=True
+                 │  valida tenant (tid) e audiência (aud)
+                 ▼
+             App Roles do token ──► Solicitante / Aprovador / Administrador
+```
+
+- **Autenticação** (quem é): Easy Auth + validação de tenant/audiência no backend.
+- **Autorização** (o que pode): App Roles, verificados em cada rota do backend. O menu da interface apenas reflete os papéis — não é controle de acesso.
+- Qualquer usuário do tenant pode entrar (os gestores precisarão gerar o TAP na Sprint 7), mas sem papel só vê a página inicial.
+- `/health` e `/health/ready` são públicos (excluídos do login).

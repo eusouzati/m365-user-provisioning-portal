@@ -4,7 +4,7 @@ Portal **open source** (licença MIT) para automatizar a entrada e a saída de c
 
 Cada organização implanta o portal **no próprio tenant e na própria assinatura Azure**. Nenhum dado de tenant fica neste repositório.
 
-> **Status:** em desenvolvimento (v0.1 — Sprint 1: fundação e infraestrutura). Ainda não cria usuários.
+> **Status:** em desenvolvimento (v0.2 — Sprint 2: login Entra ID e papéis). Ainda não cria usuários.
 
 ## Como funciona
 
@@ -39,9 +39,12 @@ az bicep install
 pwsh ./scripts/Deploy-Infrastructure.ps1 -Environment lab -WhatIfOnly   # pré-visualização
 pwsh ./scripts/Deploy-Infrastructure.ps1 -Environment lab               # cria (pede confirmação)
 pwsh ./scripts/Deploy-Application.ps1 -Environment lab                  # publica e testa /health
+
+pwsh ./scripts/New-EntraApplication.ps1 -Environment lab -AddMeToGroups Administradores   # login + papéis
+pwsh ./scripts/Deploy-Infrastructure.ps1 -Environment lab               # ativa o login no App Service
 ```
 
-Guia completo: [docs/IMPLANTACAO.md](docs/IMPLANTACAO.md).
+Guia completo: [docs/IMPLANTACAO.md](docs/IMPLANTACAO.md) · Login e papéis: [docs/CONFIGURACAO_ENTRA.md](docs/CONFIGURACAO_ENTRA.md).
 
 ## Desenvolvimento local
 
@@ -50,7 +53,7 @@ python -m venv .venv
 .\.venv\Scripts\Activate.ps1          # Linux/macOS: source .venv/bin/activate
 pip install -r requirements-dev.txt
 pre-commit install
-uvicorn app.main:app --reload         # http://localhost:8000
+uvicorn app.main:create_app --factory --reload   # http://localhost:8000 (AUTH_MODE=dev)
 pytest
 ruff check .
 ```

@@ -1,23 +1,58 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
-from fastapi.templating import Jinja2Templates
 
-from app import __version__
+from app.auth import Principal, Roles, get_current_principal, require_roles
 from app.config import Settings
 from app.dependencies import get_app_settings
+from app.templating import templates
 
 router = APIRouter(include_in_schema=False)
-templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent.parent / "templates"))
+
+
+def _page(request: Request, name: str, settings: Settings, principal: Principal, **ctx):
+    return templates.TemplateResponse(
+        request, name, {"settings": settings, "principal": principal, **ctx}
+    )
+
+
+def _building(request: Request, settings: Settings, principal: Principal, titulo: str, sprint: int):
+    ctx = {"titulo": titulo, "sprint": sprint}
+    return _page(request, "em-construcao.html", settings, principal, **ctx)
 
 
 @router.get("/", response_class=HTMLResponse)
-def home(request: Request, settings: Settings = Depends(get_app_settings)) -> HTMLResponse:
-    return templates.TemplateResponse(
-        request,
-        "index.html",
-        {"settings": settings, "version": __version__},
-    )
+def home(
+    request: Request,
+    settings: Settings = Depends(get_app_settings),
+    principal: Principal = Depends(get_current_principal),
+) -> HTMLResponse:
+    return _page(request, "index.html", settings, principal)
+
+
+@router.get("/solicitacoes", response_class=HTMLResponse)
+def solicitacoes(
+    request: Request,
+    settings: Settings = Depends(get_app_settings),
+    principal: Principal = Depends(require_roles(Roles.SOLICITANTE)),
+) -> HTMLResponse:
+    return _building(request, settings, principal, "Solicitações", 4)
+
+
+@router.get("/aprovacoes", response_class=HTMLResponse)
+def aprovacoes(
+    request: Request,
+    settings: Settings = Depends(get_app_settings),
+    principal: Principal = Depends(require_roles(Roles.APROVADOR)),
+) -> HTMLResponse:
+    return _building(request, settings, principal, "Aprovações", 5)
+
+
+@router.get("/admin", response_class=HTMLResponse)
+def admin(
+    request: Request,
+    settings: Settings = Depends(get_app_settings),
+    principal: Principal = Depends(require_roles(Roles.ADMINISTRADOR)),
+) -> HTMLResponse:
+    return _building(request, settings, principal, "Administração", 3)

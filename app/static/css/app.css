@@ -11,3 +11,15 @@ body { margin:0; font-family: "Segoe UI", system-ui, sans-serif; background:var(
 .etapas { line-height:1.8; }
 .aviso { padding:12px; background:#fff; border:1px solid var(--borda); border-radius:6px; }
 .rodape { text-align:center; font-size:12px; color:#6b7280; padding:24px; }
+a { color: var(--marca); }
+.marca { text-decoration:none; }
+.selo-dev { background:#fde7f3; color:#9d174d; }
+.usuario { display:flex; gap:12px; align-items:center; font-size:14px; }
+.menu { display:flex; gap:16px; padding:8px 24px; background:#fff; border-bottom:1px solid var(--borda); font-size:14px; }
+.menu a { text-decoration:none; }
+.papeis { line-height:1.6; }
+.cartoes { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-top:16px; }
+.cartao { display:flex; flex-direction:column; gap:6px; padding:16px; background:#fff; border:1px solid var(--borda); border-radius:8px; text-decoration:none; color:var(--texto); }
+.cartao:hover { border-color:var(--marca); }
+.cartao span { font-size:14px; color:#57606a; }
+@media (max-width: 600px) { .topo { flex-wrap:wrap; gap:8px; } }

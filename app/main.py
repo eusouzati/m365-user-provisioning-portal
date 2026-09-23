@@ -1,4 +1,7 @@
-"""Ponto de entrada FastAPI."""
+"""Ponto de entrada FastAPI.
+
+Execução: ``uvicorn app.main:create_app --factory``
+"""
 
 from __future__ import annotations
 
@@ -9,8 +12,9 @@ from fastapi.staticfiles import StaticFiles
 
 from app import __version__
 from app.config import Settings, get_settings
+from app.errors import register_error_handlers
 from app.observability import configure_observability
-from app.routes import health, home
+from app.routes import api, health, home
 from app.security import SecurityHeadersMiddleware
 from app.storage import build_storage
 
@@ -35,8 +39,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     app.include_router(health.router)
+    app.include_router(api.router)
     app.include_router(home.router)
+    register_error_handlers(app)
     return app
-
-
-app = create_app()

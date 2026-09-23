@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 infra-outputs.*.json
+entra-outputs.*.json
 sprint0-report.json
 config/*.yaml
 !config/*.example.yaml

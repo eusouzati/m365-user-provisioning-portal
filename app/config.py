@@ -35,6 +35,16 @@ class Settings(BaseSettings):
     m365_default_usage_location: str = Field(default="BR", min_length=2, max_length=2)
     timezone: str = "America/Sao_Paulo"
 
+    # Autenticação
+    # easyauth: App Service Authentication (produção/lab no Azure)
+    # dev: usuário simulado — somente desenvolvimento local
+    auth_mode: Literal["easyauth", "dev"] = "easyauth"
+    dev_user_name: str = "Usuário de Desenvolvimento"
+    dev_user_roles: str = ""  # papéis separados por vírgula
+    # Definidas pelo próprio App Service (não configurar manualmente)
+    website_auth_enabled: bool = False
+    website_site_name: str = ""
+
     # Armazenamento
     storage_backend: Literal["sqlite", "azure_table"] = "sqlite"
     sqlite_path: str = "data/m365up.db"
@@ -65,6 +75,13 @@ class Settings(BaseSettings):
             raise ValueError(
                 "AZURE_STORAGE_TABLE_ENDPOINT é obrigatório quando STORAGE_BACKEND=azure_table"
             )
+        if self.auth_mode == "dev":
+            if self.is_production:
+                raise ValueError("AUTH_MODE=dev é proibido em produção")
+            if self.website_site_name:
+                raise ValueError("AUTH_MODE=dev é proibido no Azure App Service")
+        if self.auth_mode == "easyauth" and not self.azure_tenant_id:
+            raise ValueError("AZURE_TENANT_ID é obrigatório quando AUTH_MODE=easyauth")
         if self.environment == "production" and self.storage_backend == "sqlite":
             raise ValueError("SQLite não é permitido em produção; use STORAGE_BACKEND=azure_table")
         return self
@@ -72,6 +89,10 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def dev_roles(self) -> frozenset[str]:
+        return frozenset(r.strip() for r in self.dev_user_roles.split(",") if r.strip())
 
 
 @lru_cache

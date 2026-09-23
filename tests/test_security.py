@@ -29,6 +29,7 @@ def test_docs_nunca_em_producao(monkeypatch):
     s = Settings(
         _env_file=None,
         environment="production",
+        azure_tenant_id="11111111-1111-1111-1111-111111111111",
         enable_api_docs=True,
         storage_backend="azure_table",
         azure_storage_table_endpoint="https://exemplo.table.core.windows.net",
@@ -38,7 +39,7 @@ def test_docs_nunca_em_producao(monkeypatch):
     assert client.get("/openapi.json").status_code == 404
 
 
-def test_pagina_inicial_em_portugues(client):
+def test_pagina_inicial_em_portugues(client):  # modo dev: usuário simulado
     resp = client.get("/")
     assert resp.status_code == 200
     assert 'lang="pt-BR"' in resp.text

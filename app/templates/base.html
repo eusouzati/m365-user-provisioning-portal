@@ -8,12 +8,27 @@
 </head>
 <body>
   <header class="topo">
-    <span class="marca">{{ settings.app_name }}</span>
+    <a class="marca" href="/">{{ settings.app_name }}</a>
     <span class="selos">
       <span class="selo selo-{{ settings.environment }}">{{ settings.environment }}</span>
       {% if settings.dry_run %}<span class="selo selo-dryrun">DRY_RUN</span>{% endif %}
+      {% if settings.auth_mode == "dev" %}<span class="selo selo-dev">login simulado</span>{% endif %}
     </span>
+    {% if principal %}
+    <span class="usuario">
+      <span class="usuario-nome">{{ principal.name }}</span>
+      {% if settings.auth_mode == "easyauth" %}<a href="/.auth/logout?post_logout_redirect_uri=/">Sair</a>{% endif %}
+    </span>
+    {% endif %}
   </header>
+  {% if principal %}
+  <nav class="menu">
+    <a href="/">Início</a>
+    {% if principal.has_any_role(Roles.SOLICITANTE) %}<a href="/solicitacoes">Solicitações</a>{% endif %}
+    {% if principal.has_any_role(Roles.APROVADOR) %}<a href="/aprovacoes">Aprovações</a>{% endif %}
+    {% if principal.has_any_role(Roles.ADMINISTRADOR) %}<a href="/admin">Administração</a>{% endif %}
+  </nav>
+  {% endif %}
   <main class="conteudo">
     {% block content %}{% endblock %}
   </main>

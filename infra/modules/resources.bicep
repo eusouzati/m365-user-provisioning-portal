@@ -9,9 +9,13 @@ param timezone string
 param logDailyCapGb int
 param tags object
 
+@description('Client ID do App Registration do portal. Vazio = login ainda não configurado.')
+param entraClientId string = ''
+
 // Sufixo determinístico para nomes que precisam ser globais (Web App, Storage).
 var suffix = take(uniqueString(subscription().id, resourceGroup().id, prefix, environment), 5)
 var isFree = appServiceSku == 'F1'
+var authEnabled = !empty(entraClientId)
 
 // IDs de funções internas do Azure
 var storageTableDataContributor = '0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3'
@@ -127,7 +131,7 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
     clientAffinityEnabled: false
     siteConfig: {
       linuxFxVersion: 'PYTHON|3.12'
-      appCommandLine: 'python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=* --no-server-header'
+      appCommandLine: 'python -m uvicorn app.main:create_app --factory --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips=* --no-server-header'
       alwaysOn: !isFree
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
@@ -141,11 +145,52 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'AZURE_STORAGE_TABLE_ENDPOINT', value: storage.properties.primaryEndpoints.table }
         { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }
         { name: 'AZURE_TENANT_ID', value: tenant().tenantId }
+        { name: 'AUTH_MODE', value: 'easyauth' }
+        { name: 'ENTRA_APP_CLIENT_ID', value: entraClientId }
+        // Login do App Service usa a Managed Identity como credencial federada (sem Client Secret)
+        { name: 'OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID', value: identity.properties.clientId }
         { name: 'M365_DEFAULT_DOMAIN', value: m365DefaultDomain }
         { name: 'M365_DEFAULT_USAGE_LOCATION', value: usageLocation }
         { name: 'TIMEZONE', value: timezone }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
       ]
+    }
+  }
+}
+
+// App Service Authentication (Easy Auth) com Microsoft Entra ID — somente este tenant.
+resource authSettings 'Microsoft.Web/sites/config@2023-12-01' = if (authEnabled) {
+  parent: webApp
+  name: 'authsettingsV2'
+  properties: {
+    platform: { enabled: true, runtimeVersion: '~1' }
+    globalValidation: {
+      requireAuthentication: true
+      unauthenticatedClientAction: 'RedirectToLoginPage'
+      redirectToProvider: 'azureactivedirectory'
+      excludedPaths: ['/health', '/health/ready']
+    }
+    identityProviders: {
+      azureActiveDirectory: {
+        enabled: true
+        registration: {
+          clientId: entraClientId
+          clientSecretSettingName: 'OVERRIDE_USE_MI_FIC_ASSERTION_CLIENTID'
+          openIdIssuer: '${az.environment().authentication.loginEndpoint}${tenant().tenantId}/v2.0'
+        }
+        validation: {
+          allowedAudiences: [entraClientId, 'api://${entraClientId}']
+        }
+      }
+    }
+    login: {
+      tokenStore: { enabled: true }
+      cookieExpiration: { convention: 'FixedTime', timeToExpiration: '08:00:00' }
+      nonce: { validateNonce: true }
+    }
+    httpSettings: {
+      requireHttps: true
+      forwardProxy: { convention: 'NoProxy' }
     }
   }
 }
@@ -163,6 +208,7 @@ resource scmPolicy 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2023-
   properties: { allow: false }
 }
 
+output authEnabled bool = authEnabled
 output webAppName string = webApp.name
 output webAppUrl string = 'https://${webApp.properties.defaultHostName}'
 output managedIdentityName string = identity.name

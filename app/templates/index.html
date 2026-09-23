@@ -1,13 +1,27 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Bem-vindo</h1>
-<p>Este portal automatiza a entrada e a saída de colaboradores no Microsoft 365 a partir das solicitações do RH.</p>
-<ul class="etapas">
-  <li>Solicitação do RH</li>
-  <li>Aprovação</li>
-  <li>Conta criada desativada</li>
-  <li>Licença no dia anterior à admissão</li>
-  <li>Ativação e acesso inicial no dia da admissão</li>
+<h1>Olá, {{ principal.name }}</h1>
+
+{% if principal.portal_roles %}
+<p>Seus papéis neste portal:</p>
+<ul class="papeis">
+  {% for label in principal.role_labels %}<li>{{ label }}</li>{% endfor %}
 </ul>
-<p class="aviso">Versão inicial (Sprint 1): login, formulários e integração com o Microsoft 365 chegam nas próximas etapas.</p>
+<div class="cartoes">
+  {% if principal.has_any_role(Roles.SOLICITANTE) %}
+  <a class="cartao" href="/solicitacoes"><strong>Solicitações</strong><span>Pedir a criação ou o desligamento de colaboradores.</span></a>
+  {% endif %}
+  {% if principal.has_any_role(Roles.APROVADOR) %}
+  <a class="cartao" href="/aprovacoes"><strong>Aprovações</strong><span>Aprovar ou rejeitar solicitações do RH.</span></a>
+  {% endif %}
+  {% if principal.has_any_role(Roles.ADMINISTRADOR) %}
+  <a class="cartao" href="/admin"><strong>Administração</strong><span>Perfis de onboarding, licenças e auditoria.</span></a>
+  {% endif %}
+</div>
+{% else %}
+<div class="aviso">
+  <p>Você está autenticado, mas ainda não possui papel neste portal.</p>
+  <p>Se você faz parte do RH, da TI ou da administração, peça ao administrador para incluí-lo no grupo correspondente.</p>
+</div>
+{% endif %}
 {% endblock %}

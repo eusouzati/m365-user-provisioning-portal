@@ -30,6 +30,9 @@ param timezone string = 'America/Sao_Paulo'
 @description('Limite diário de ingestão do Log Analytics em GB (controle de custo).')
 param logDailyCapGb int = 1
 
+@description('Client ID do App Registration do portal (Sprint 2). Vazio = login não configurado.')
+param entraClientId string = ''
+
 @description('Tags adicionais.')
 param tags object = {}
 
@@ -55,6 +58,7 @@ module resources 'modules/resources.bicep' = {
     usageLocation: usageLocation
     timezone: timezone
     logDailyCapGb: logDailyCapGb
+    entraClientId: entraClientId
     tags: allTags
   }
 }
@@ -67,3 +71,4 @@ output managedIdentityClientId string = resources.outputs.managedIdentityClientI
 output managedIdentityPrincipalId string = resources.outputs.managedIdentityPrincipalId
 output storageAccountName string = resources.outputs.storageAccountName
 output tableEndpoint string = resources.outputs.tableEndpoint
+output authEnabled bool = resources.outputs.authEnabled
