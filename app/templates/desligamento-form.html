@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Desligamento · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Desligamento de colaborador</h1>
+<p class="ajuda">A conta é <strong>bloqueada</strong> (nunca excluída), as sessões são encerradas e o colaborador sai dos grupos e das licenças. Tudo passa por aprovação.</p>
+
+{% if erros %}
+<div class="alerta alerta-erro" role="alert">
+  <strong>Corrija os itens abaixo:</strong>
+  <ul>{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<form class="formulario" method="post" action="/desligamentos/revisar" autocomplete="off">
+  <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+  <input type="hidden" name="idem" value="{{ dados.idem }}">
+
+  <fieldset>
+    <legend>Colaborador</legend>
+    <div class="gestor" data-busca-usuario="colaborador" data-busca-extra="desativados=true">
+      <label>Buscar colaborador
+        <input id="colaborador_busca" type="search" placeholder="Digite o nome ou o e-mail…" aria-describedby="colaborador_escolhido">
+      </label>
+      <ul id="colaborador_resultados" class="resultados" aria-live="polite"></ul>
+      <p class="ajuda">Selecionado: <strong id="colaborador_escolhido">{{ dados.colaborador_nome or "nenhum" }}</strong></p>
+      <input type="hidden" id="colaborador_id" name="colaborador_id" value="{{ dados.colaborador_id }}">
+      <input type="hidden" id="colaborador_nome" name="colaborador_nome" value="{{ dados.colaborador_nome }}">
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Data</legend>
+    <div class="linha">
+      <label>Último dia de trabalho <input type="date" name="data_desligamento" required value="{{ dados.data_desligamento }}" min="{{ data_min }}" max="{{ data_max }}"></label>
+    </div>
+    <p class="ajuda">A conta é bloqueada nesse dia às {{ "%02d"|format(settings.offboarding_block_hour) }}:00 (horário de {{ settings.timezone }}).</p>
+    <label class="opcao"><input type="checkbox" name="imediato" {% if dados.imediato in ("on", "true", "True") %}checked{% endif %}> Bloquear imediatamente após a aprovação</label>
+    <label>Observação <span class="ajuda">(opcional; não informe o motivo do desligamento)</span>
+      <textarea name="observacao" rows="2" maxlength="500">{{ dados.observacao }}</textarea>
+    </label>
+  </fieldset>
+
+  <div class="acoes">
+    <button class="botao" type="submit">Revisar</button>
+    <a class="botao secundario" href="/solicitacoes">Cancelar</a>
+  </div>
+</form>
+<script src="{{ url_for('static', path='js/gestor.js') }}" defer></script>
+{% endblock %}

@@ -4,7 +4,7 @@ Portal **open source** (licença MIT) para automatizar a entrada e a saída de c
 
 Cada organização implanta o portal **no próprio tenant e na própria assinatura Azure**. Nenhum dado de tenant fica neste repositório.
 
-> **Status:** em desenvolvimento (v0.7 — Sprint 7: ciclo de vida automático — licença no D-1, ativação no D0 e acesso inicial por Temporary Access Pass gerado pelo gestor). Ainda não cria usuários.
+> **Status:** em desenvolvimento (v0.8 — Sprint 8: desligamento com aprovação — bloqueio agendado, revogação de sessões e remoção de grupos e licenças). Admissão completa desde a Sprint 7.
 
 ## Como funciona
 
@@ -14,7 +14,7 @@ RH solicita → Aprovação → Conta criada DESATIVADA e sem licença
 → Colaborador registra MFA no primeiro acesso → tudo auditado
 ```
 
-Desligamento: desativar conta, revogar sessões, remover grupos e, após N dias, a licença. Nada é excluído automaticamente.
+Desligamento: RH pede → aprovação → no último dia a conta é bloqueada, as sessões são revogadas e o colaborador sai dos grupos e das licenças. A conta nunca é excluída automaticamente. Veja [docs/DESLIGAMENTO.md](docs/DESLIGAMENTO.md).
 
 ## Requisitos
 

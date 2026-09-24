@@ -30,7 +30,7 @@ Com este nível, o portal **não consegue alterar nada** no Microsoft 365. Além
 | Permissão | Uso no portal |
 |---|---|
 | `User.ReadWrite.All` | Criar a conta (desativada), definir propriedades e gestor |
-| `User-LifeCycleInfo.ReadWrite.All` | `employeeHireDate` (e, na Sprint 8, `employeeLeaveDateTime`) |
+| `User-LifeCycleInfo.ReadWrite.All` | `employeeHireDate` e, no desligamento, `employeeLeaveDateTime` |
 | `GroupMember.ReadWrite.All` | Adicionar aos grupos de acesso do perfil |
 
 Proteções adicionais no código: escrita só existe com `DRY_RUN=false` (`MsGraphWriter`); grupos revalidados antes de cada inclusão; grupos com funções administrativas são recusados (e o Graph também os bloqueia sem `RoleManagement.*`); limite diário de contas (`PROVISIONING_DAILY_LIMIT`).
@@ -49,11 +49,17 @@ Proteções adicionais no código: escrita só existe com `DRY_RUN=false` (`MsGr
 
 Com `LICENSE_MODE=group` (padrão) a licença é aplicada pela entrada no grupo de licença, usando `GroupMember.ReadWrite.All` (nível `criacao`).
 
-## Próximos níveis (planejados)
+## Nível `desligamento` (Sprint 8) — inclui os anteriores
 
-| Nível | Sprint | Permissões | Motivo |
-|---|---|---|---|
-| `desligamento` | 8 | `User.RevokeSessions.All` | Revogar sessões |
+```powershell
+./scripts/Set-GraphPermissions.ps1 -Environment lab -Nivel desligamento
+```
+
+| Permissão | Uso no portal |
+|---|---|
+| `User.RevokeSessions.All` | Encerrar as sessões ativas do colaborador desligado |
+
+O restante do desligamento usa permissões dos níveis anteriores: bloquear a conta (`User.EnableDisableAccount.All`), sair dos grupos (`GroupMember.ReadWrite.All`), data de desligamento (`User-LifeCycleInfo.ReadWrite.All`) e, só com `LICENSE_MODE=direct`, remover licenças diretas (`LicenseAssignment.ReadWrite.All`). O portal **não** recebe permissão para excluir usuários nem para alterar grupos com funções administrativas.
 
 ## Riscos e mitigação
 

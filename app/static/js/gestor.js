@@ -1,12 +1,22 @@
-// Busca de gestor no diretório (Microsoft Graph via API do portal).
+// Busca de usuários no diretório (Microsoft Graph via API do portal).
+// Usada para escolher o gestor (novo colaborador) e o colaborador (desligamento).
+// Cada busca usa os ids <prefixo>_busca, _resultados, _id, _nome e _escolhido;
+// o prefixo vem de data-busca-usuario (padrão: "gestor").
 (function () {
   "use strict";
-  const busca = document.getElementById("gestor_busca");
-  const lista = document.getElementById("gestor_resultados");
-  const idCampo = document.getElementById("gestor_id");
-  const nomeCampo = document.getElementById("gestor_nome");
-  const escolhido = document.getElementById("gestor_escolhido");
+  const marcados = Array.from(document.querySelectorAll("[data-busca-usuario]"));
+  const prefixos = marcados.length ? marcados.map(function (el) { return el.dataset.buscaUsuario; }) : ["gestor"];
+  prefixos.forEach(configurar);
+
+  function configurar(p) {
+  const busca = document.getElementById(p + "_busca");
+  const lista = document.getElementById(p + "_resultados");
+  const idCampo = document.getElementById(p + "_id");
+  const nomeCampo = document.getElementById(p + "_nome");
+  const escolhido = document.getElementById(p + "_escolhido");
   if (!busca || !lista || !idCampo) return;
+  const raiz = document.querySelector('[data-busca-usuario="' + p + '"]');
+  const extra = raiz && raiz.dataset.buscaExtra ? "&" + raiz.dataset.buscaExtra : "";
 
   let timer = null;
   let ultimo = "";
@@ -42,7 +52,7 @@
       const li = document.createElement("li");
       const b = document.createElement("button");
       b.type = "button";
-      b.textContent = u.nome + " — " + (u.cargo || u.upn);
+      b.textContent = u.nome + " — " + (u.cargo || u.upn) + (u.ativo === false ? " (desativada)" : "");
       b.addEventListener("click", function () { escolher(u); });
       li.appendChild(b);
       lista.appendChild(li);
@@ -55,11 +65,11 @@
     if (q.length < 2) { limpar(); return; }
     timer = setTimeout(function () {
       ultimo = q;
-      fetch("/api/diretorio/usuarios?q=" + encodeURIComponent(q), { credentials: "same-origin" })
+      fetch("/api/diretorio/usuarios?q=" + encodeURIComponent(q) + extra, { credentials: "same-origin" })
         .then(function (r) {
           if (r.ok) return r.json();
           if (r.status === 401) throw new Error("Sua sessão expirou. Recarregue a página.");
-          if (r.status === 403) throw new Error("Você não tem permissão para buscar gestores.");
+          if (r.status === 403) throw new Error("Você não tem permissão para buscar no diretório.");
           throw new Error("Não foi possível consultar o diretório agora. Tente novamente em instantes.");
         })
         .then(function (dados) { if (q === ultimo) mostrar(dados); })
@@ -68,4 +78,5 @@
         });
     }, 300);
   });
+  }
 })();

@@ -55,6 +55,7 @@ class Group:
     is_role_assignable: bool = False
     assigned_license_sku_ids: tuple[str, ...] = ()
     mail: str = ""
+    on_premises: bool = False  # sincronizado do AD local
 
     @property
     def is_license_group(self) -> bool:
@@ -71,6 +72,22 @@ class UserSummary:
     department: str = ""
     account_enabled: bool = True
     employee_id: str = ""
+
+
+@dataclass(frozen=True)
+class LicenseState:
+    """Licença de um usuário (licenseAssignmentStates)."""
+
+    sku_id: str
+    by_group: bool  # herdada de um grupo (sai junto com o grupo)
+
+
+@dataclass
+class Memberships:
+    """Associações diretas de um usuário (memberOf)."""
+
+    groups: list[Group] = field(default_factory=list)
+    directory_roles: int = 0  # funções administrativas do Entra ID
 
 
 @dataclass(frozen=True)

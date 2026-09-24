@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -14,7 +14,7 @@ from app.auth import Principal, Roles, require_roles
 from app.config import Settings
 from app.core.profiles import TIPOS_COLABORADOR
 from app.core.requests import NewHireForm, friendly_errors
-from app.core.workflow import REQUEST_ID_RE, WorkflowError, cancel
+from app.core.workflow import REQUEST_ID_RE, WorkflowError, can_cancel, cancel
 from app.csrf import verify_csrf
 from app.dependencies import (
     get_app_settings,
@@ -27,6 +27,15 @@ from app.graph.directory import DirectoryCache
 from app.graph.errors import GraphError
 from app.graph.service import GraphService
 from app.graph.writer import GraphWriter
+from app.services.offboarding import (
+    EXECUTABLE as OFFBOARDING_EXECUTABLE,
+)
+from app.services.offboarding import (
+    OffboardingError,
+    OffboardingService,
+    block_at,
+    schedule_text,
+)
 from app.services.onboarding import ReviewError, today_in
 from app.services.provisioning import (
     PROVISIONABLE,
@@ -237,7 +246,8 @@ def load_visible(storage: StorageBackend, request_id: str, principal: Principal)
     from app.auth import ForbiddenError
 
     req = storage.get_request(request_id) if REQUEST_ID_RE.match(request_id) else None
-    if req is None:
+    if req is None or req.eh_alvo(principal.object_id):
+        # O próprio colaborador em desligamento não vê nem decide sobre o pedido.
         return None
     if not (
         req.eh_do_solicitante(principal.object_id)
@@ -253,9 +263,10 @@ def render_detail(request, settings, principal, req, erros=None, ok="", status=2
         and principal.has_any_role(Roles.APROVADOR)
         and not req.eh_do_solicitante(principal.object_id)
     )
-    pode_cancelar = req.pendente and (
+    pode_cancelar = can_cancel(req) and (
         req.eh_do_solicitante(principal.object_id) or principal.has_any_role(Roles.ADMINISTRADOR)
     )
+    executaveis = OFFBOARDING_EXECUTABLE if req.eh_desligamento else PROVISIONABLE
     return _render(
         request,
         "solicitacao-detalhe.html",
@@ -271,19 +282,22 @@ def render_detail(request, settings, principal, req, erros=None, ok="", status=2
         propria_pendente=req.pendente
         and req.eh_do_solicitante(principal.object_id)
         and principal.has_any_role(Roles.APROVADOR),
-        pode_provisionar=req.status in PROVISIONABLE
-        and principal.has_any_role(Roles.ADMINISTRADOR),
+        pode_provisionar=req.status in executaveis and principal.has_any_role(Roles.ADMINISTRADOR),
+        agendamento=schedule_text(req, settings) if req.eh_desligamento else "",
+        bloqueio_futuro=req.eh_desligamento
+        and req.status == "aprovada"
+        and (block_at(req, settings) or datetime.now(UTC)) > datetime.now(UTC),
     )
 
 
 def run_provisioning(req, *, settings, writer, directory, storage):
-    """Executa o provisionamento sem derrubar a requisição; falhas ficam nas etapas."""
-    service = UserProvisioningService(
-        settings=settings, writer=writer, directory=directory, storage=storage
-    )
+    """Executa o provisionamento (ou o desligamento) sem derrubar a requisição;
+    falhas ficam registradas nas etapas."""
+    cls = OffboardingService if req.eh_desligamento else UserProvisioningService
+    service = cls(settings=settings, writer=writer, directory=directory, storage=storage)
     try:
         return service.run(req)
-    except (ProvisioningError, ConcurrencyError) as exc:
+    except (ProvisioningError, OffboardingError, ConcurrencyError) as exc:
         logger.warning("Provisionamento de %s não executado: %s", req.id, exc)
         return None
 
@@ -302,13 +316,13 @@ def provision_request(
     req = load_visible(storage, request_id, principal)
     if req is None:
         return RedirectResponse("/admin/solicitacoes", status_code=303)
-    if req.status not in PROVISIONABLE:
+    if req.status not in (OFFBOARDING_EXECUTABLE if req.eh_desligamento else PROVISIONABLE):
         return render_detail(
             request,
             settings,
             principal,
             req,
-            [f"A solicitação está '{req.status_label}' e não pode ser provisionada."],
+            [f"A solicitação está '{req.status_label}' e não pode ser executada."],
             status=409,
         )
     logger.info("Provisionamento de %s disparado por %s", request_id, principal.object_id)

@@ -22,7 +22,11 @@
     UserAuthenticationMethod.ReadWrite.All  gerar o Temporary Access Pass (acesso inicial)
     LicenseAssignment.ReadWrite.All         somente se LICENSE_MODE=direct no .env
 
-  O nível de desligamento (Sprint 8) será adicionado com a mesma confirmação.
+  Nível "desligamento" (Sprint 8) — inclui os anteriores e adiciona:
+    User.RevokeSessions.All                 encerrar as sessões ativas do colaborador desligado
+  (bloquear a conta usa User.EnableDisableAccount.All; sair dos grupos, GroupMember.ReadWrite.All;
+   a data de desligamento, User-LifeCycleInfo.ReadWrite.All — todas dos níveis anteriores)
+
   Idempotente e nunca remove permissões (permissões extras são apenas listadas).
 
   Permissões delegadas do operador (Administrador Global ou Administrador de Funções Privilegiadas):
@@ -32,11 +36,12 @@
   ./scripts/Set-GraphPermissions.ps1 -Environment lab -WhatIfOnly
   ./scripts/Set-GraphPermissions.ps1 -Environment lab
   ./scripts/Set-GraphPermissions.ps1 -Environment lab -Nivel criacao -WhatIfOnly
+  ./scripts/Set-GraphPermissions.ps1 -Environment lab -Nivel desligamento
 #>
 [CmdletBinding()]
 param(
     [ValidateSet('lab', 'production')] [string] $Environment = 'lab',
-    [ValidateSet('leitura', 'criacao', 'ciclo-de-vida')] [string] $Nivel = 'leitura',
+    [ValidateSet('leitura', 'criacao', 'ciclo-de-vida', 'desligamento')] [string] $Nivel = 'leitura',
     [string] $EnvFile = (Join-Path (Split-Path $PSScriptRoot -Parent) '.env'),
     [switch] $WhatIfOnly
 )
@@ -58,14 +63,18 @@ $niveis = [ordered]@{
         'GroupMember.ReadWrite.All'
     )
     'ciclo-de-vida' = @('User.EnableDisableAccount.All', 'UserAuthenticationMethod.ReadWrite.All')
+    desligamento = @('User.RevokeSessions.All')
 }
 # Cada nível inclui os anteriores
-$ordem = @('leitura', 'criacao', 'ciclo-de-vida')
+$ordem = @('leitura', 'criacao', 'ciclo-de-vida', 'desligamento')
 $desejadas = @()
 foreach ($n in $ordem) { $desejadas += $niveis[$n]; if ($n -eq $Nivel) { break } }
 
 $cfg = Import-DotEnv $EnvFile
-if ($Nivel -eq 'ciclo-de-vida' -and $cfg['LICENSE_MODE'] -eq 'direct') { $desejadas += 'LicenseAssignment.ReadWrite.All' }
+# Licença direta (atribuir no D-1 e remover no desligamento) só com LICENSE_MODE=direct
+if ($ordem.IndexOf($Nivel) -ge $ordem.IndexOf('ciclo-de-vida') -and $cfg['LICENSE_MODE'] -eq 'direct') {
+    $desejadas += 'LicenseAssignment.ReadWrite.All'
+}
 $tenantId = Get-Required $cfg 'AZURE_TENANT_ID'
 $outputsPath = Get-OutputsPath $Environment
 if (-not (Test-Path $outputsPath)) { throw "Saídas da infraestrutura não encontradas ($outputsPath)." }
@@ -106,7 +115,7 @@ foreach ($p in $desejadas) {
 $extras = @($atuaisValores | Where-Object { $_ -and ($desejadas -notcontains $_) })
 foreach ($e in $extras) { Write-Host "  ! $e (concedida, fora deste nível — não será removida)" -ForegroundColor Yellow }
 if ($Nivel -eq 'leitura') { Write-Host "`nSomente permissões de leitura. Nada será removido." }
-else { Write-Host "`nATENÇÃO: o nível '$Nivel' permite ao portal CRIAR e ALTERAR usuários e grupos. Nada será removido." -ForegroundColor Yellow }
+else { Write-Host "`nATENÇÃO: o nível '$Nivel' permite ao portal CRIAR, ALTERAR e BLOQUEAR usuários e mudar grupos. Nenhuma permissão será removida." -ForegroundColor Yellow }
 
 if (-not $faltando) { Write-Host "`nNada a fazer." -ForegroundColor Green; Disconnect-MgGraph | Out-Null; return }
 if ($WhatIfOnly) { Write-Host "`nSomente pré-visualização. Nada foi alterado." -ForegroundColor Yellow; Disconnect-MgGraph | Out-Null; return }

@@ -13,7 +13,7 @@ import logging
 
 from app.auth import Principal
 from app.config import Settings
-from app.core.workflow import ProvisioningRequest, note
+from app.core.workflow import ProvisioningRequest, note, offboarded_ids
 from app.graph.errors import GraphError
 from app.graph.service import GraphService
 from app.graph.writer import GraphWriter
@@ -30,14 +30,18 @@ class AccessError(RuntimeError):
 
 
 def is_manager(req: ProvisioningRequest, principal: Principal) -> bool:
-    return req.gestor.id.lower() == principal.object_id.lower()
+    return not req.eh_desligamento and req.gestor.id.lower() == principal.object_id.lower()
 
 
 def team_requests(storage: StorageBackend, principal: Principal) -> list[ProvisioningRequest]:
+    todas = storage.list_requests(limit=1000)
+    desligados = offboarded_ids(todas)
     return [
         r
-        for r in storage.list_requests(limit=1000)
-        if r.status in TEAM_STATUSES and is_manager(r, principal)
+        for r in todas
+        if r.status in TEAM_STATUSES
+        and is_manager(r, principal)
+        and r.object_id.lower() not in desligados
     ]
 
 
@@ -87,6 +91,8 @@ def generate_initial_access(
     """Devolve (código TAP, validade em minutos)."""
     if not is_manager(req, principal):
         raise AccessError("Somente o gestor do colaborador pode gerar o acesso inicial.")
+    if req.object_id.lower() in offboarded_ids(storage.list_requests(limit=1000)):
+        raise AccessError("Este colaborador está em desligamento: o acesso inicial não é gerado.")
     if req.status != "ativa":
         raise AccessError("A conta ainda não foi ativada. O acesso inicial fica disponível no D0.")
     if writer.dry_run:

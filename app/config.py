@@ -60,6 +60,8 @@ class Settings(BaseSettings):
     upn_particles: str = "da,das,de,del,der,di,do,dos,du,e,la,le,van,von,y"
     hire_date_past_days: int = Field(default=30, ge=0, le=365)
     hire_date_future_days: int = Field(default=365, ge=1, le=730)
+    # Desligamento: hora local do último dia de trabalho em que a conta é bloqueada
+    offboarding_block_hour: int = Field(default=18, ge=0, le=23)
     # Grupos que NUNCA podem ser usados em perfis (ex.: grupos dos papéis do portal)
     protected_group_ids: str = ""
 

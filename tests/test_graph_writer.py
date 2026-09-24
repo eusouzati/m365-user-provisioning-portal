@@ -159,3 +159,55 @@ def test_tap_nao_aparece_no_log(caplog):
 
     make(handler).create_temporary_access_pass("u1", 60)
     assert "SEGREDO-TAP-999" not in caplog.text
+
+
+# ------------------------------------------------------------ Sprint 8
+def _seen(handler_status=204, body=None):
+    seen = []
+
+    def handler(req):
+        seen.append((req.method, req.url.path, json.loads(req.content) if req.content else None))
+        return httpx.Response(handler_status, json=body) if body else httpx.Response(handler_status)
+
+    return seen, handler
+
+
+def test_disable_revoke_e_data_de_saida():
+    seen, handler = _seen()
+    w = make(handler)
+    w.disable_user("u1")
+    w.revoke_sessions("u1")
+    w.set_leave_date("u1", "2026-10-09T21:00:00Z")
+    assert seen == [
+        ("PATCH", "/v1.0/users/u1", {"accountEnabled": False}),
+        ("POST", "/v1.0/users/u1/revokeSignInSessions", None),
+        ("PATCH", "/v1.0/users/u1", {"employeeLeaveDateTime": "2026-10-09T21:00:00Z"}),
+    ]
+
+
+def test_remove_group_member_delete_ref_e_404_tolerado():
+    seen, handler = _seen()
+    assert make(handler).remove_group_member("g1", "u1") is True
+    assert seen == [("DELETE", "/v1.0/groups/g1/members/u1/$ref", None)]
+    gone = make(lambda req: httpx.Response(404, json={"error": {"code": "NotFound"}}))
+    assert gone.remove_group_member("g1", "u1") is False
+
+
+def test_remove_license():
+    seen, handler = _seen(200, {"id": "u1"})
+    make(handler).remove_license("u1", "sku-1")
+    assert seen == [
+        ("POST", "/v1.0/users/u1/assignLicense", {"addLicenses": [], "removeLicenses": ["sku-1"]})
+    ]
+
+
+def test_revoke_nao_repete_em_5xx():
+    calls = []
+
+    def handler(req):
+        calls.append(1)
+        return httpx.Response(500, json={"error": {"code": "InternalServerError"}})
+
+    with pytest.raises(GraphError):
+        make(handler).revoke_sessions("u1")
+    assert len(calls) == 1

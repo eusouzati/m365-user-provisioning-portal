@@ -34,7 +34,7 @@ def reservations(
     upns: set[str] = set()
     matriculas: dict[str, str] = {}
     for r in storage.list_requests(limit=1000):
-        if r.status in FINAL_STATUSES or r.id == exclude_id:
+        if r.status in FINAL_STATUSES or r.id == exclude_id or r.eh_desligamento:
             continue
         if exclude_idem and r.idempotency_key == exclude_idem:  # reenvio da mesma solicitação
             continue

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Revisar desligamento · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Revisar desligamento</h1>
+{% for a in r.avisos %}<div class="alerta alerta-aviso">{{ a }}</div>{% endfor %}
+
+<section class="painel">
+  <h2>Colaborador</h2>
+  <dl class="grade">
+    <dt>Nome</dt><dd>{{ r.user.display_name }}</dd>
+    <dt>UPN (login)</dt><dd><code>{{ r.user.user_principal_name }}</code></dd>
+    {% if r.user.employee_id %}<dt>Matrícula</dt><dd>{{ r.user.employee_id }}</dd>{% endif %}
+    {% if r.user.job_title %}<dt>Cargo</dt><dd>{{ r.user.job_title }}</dd>{% endif %}
+    {% if r.user.department %}<dt>Departamento</dt><dd>{{ r.user.department }}</dd>{% endif %}
+    <dt>Gestor</dt><dd>{% if r.gestor %}{{ r.gestor.display_name }} <span class="ajuda">({{ r.gestor.user_principal_name }})</span>{% else %}—{% endif %}</dd>
+    <dt>Último dia</dt><dd>{{ r.form.data_desligamento.strftime("%d/%m/%Y") }}</dd>
+    {% if r.form.observacao %}<dt>Observação</dt><dd>{{ r.form.observacao }}</dd>{% endif %}
+  </dl>
+</section>
+
+<section class="painel">
+  <h2>Acessos que serão removidos</h2>
+  <p class="ajuda">Situação atual; a lista é conferida de novo no momento do bloqueio.</p>
+  <dl class="grade">
+    <dt>Grupos</dt><dd>{% for g in r.remover %}{{ g.display_name }}{% if g.is_license_group %} (licença){% endif %}{% if not loop.last %}, {% endif %}{% else %}Nenhum{% endfor %}</dd>
+    {% if r.manuais %}<dt>Ação manual</dt><dd><ul class="sem-marcador">{% for g, motivo in r.manuais %}<li><strong>{{ g.display_name }}</strong> — {{ motivo }}</li>{% endfor %}</ul></dd>{% endif %}
+    {% if r.licencas_diretas %}<dt>Licenças diretas</dt><dd>{{ r.licencas_diretas|join(", ") }}{% if settings.license_mode == "group" %} <span class="ajuda">(ação manual)</span>{% endif %}</dd>{% endif %}
+    {% if r.subordinados %}<dt>Subordinados</dt><dd>{% for u in r.subordinados[:10] %}{{ u.display_name }}{% if not loop.last %}, {% endif %}{% endfor %}{% if r.subordinados|length > 10 %} e mais {{ r.subordinados|length - 10 }}{% endif %} <span class="ajuda">(defina um novo gestor)</span></dd>{% endif %}
+  </dl>
+</section>
+
+<section class="painel">
+  <h2>Linha do tempo</h2>
+  <ol class="linha-tempo">
+    <li><strong>Envio:</strong> a solicitação aguarda aprovação de outra pessoa.</li>
+    <li><strong>{% if r.bloqueio_em %}{{ r.bloqueio_em.strftime("%d/%m/%Y às %H:%M") }}{% else %}Logo após a aprovação{% endif %}:</strong> conta bloqueada, sessões encerradas, data de desligamento registrada e remoção dos grupos e licenças.</li>
+    <li><strong>Depois:</strong> a conta permanece <em>bloqueada</em> no Entra ID (não é excluída).</li>
+  </ol>
+</section>
+
+{% if settings.dry_run %}<div class="alerta alerta-aviso"><strong>DRY_RUN ativo.</strong> Nada será alterado no Microsoft 365.</div>{% endif %}
+
+<div class="acoes">
+  <form method="post" action="/desligamentos/enviar" data-envio-unico>{% include "_hidden_form.html" %}<button class="botao perigo" type="submit">Enviar pedido de desligamento</button></form>
+  <form method="post" action="/desligamentos/editar">{% include "_hidden_form.html" %}<button class="botao secundario" type="submit">Voltar e editar</button></form>
+</div>
+{% endblock %}

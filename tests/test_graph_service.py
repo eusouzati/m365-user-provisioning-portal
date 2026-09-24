@@ -227,3 +227,85 @@ def test_tap_policy():
 def test_helpers():
     assert odata_str("a'b") == "a''b"
     assert sanitize_search(' "x\\y" ') == "xy"
+
+
+# ------------------------------------------------------------ Sprint 8
+UID = "0f8fad5b-d9cb-469f-a165-70867728950e"
+
+
+def test_memberships_separa_grupos_e_funcoes():
+    def handler(req):
+        assert req.url.path == f"/v1.0/users/{UID}/memberOf"
+        assert "assignedLicenses" in req.url.params["$select"]  # identifica grupos de licença
+        return httpx.Response(
+            200,
+            json={
+                "value": [
+                    {
+                        "@odata.type": "#microsoft.graph.group",
+                        "id": "g2",
+                        "displayName": "b",
+                        "securityEnabled": True,
+                        "groupTypes": ["DynamicMembership"],
+                    },
+                    {
+                        "@odata.type": "#microsoft.graph.group",
+                        "id": "g1",
+                        "displayName": "A",
+                        "securityEnabled": True,
+                    },
+                    {"@odata.type": "#microsoft.graph.directoryRole", "id": "r1"},
+                    {"@odata.type": "#microsoft.graph.administrativeUnit", "id": "au"},
+                ]
+            },
+        )
+
+    svc, _ = make(handler)
+    m = svc.list_memberships(UID)
+    assert [g.id for g in m.groups] == ["g1", "g2"] and m.groups[1].is_dynamic
+    assert m.directory_roles == 1
+
+
+def test_license_states_direta_prevalece():
+    def handler(req):
+        return httpx.Response(
+            200,
+            json={
+                "id": UID,
+                "licenseAssignmentStates": [
+                    {"skuId": "s1", "assignedByGroup": "g1"},
+                    {"skuId": "s1", "assignedByGroup": None},
+                    {"skuId": "s2", "assignedByGroup": "g2"},
+                ],
+            },
+        )
+
+    svc, _ = make(handler)
+    estados = {s.sku_id: s.by_group for s in svc.list_license_states(UID)}
+    assert estados == {"s1": False, "s2": True}
+
+
+def test_gestor_e_subordinados():
+    def handler(req):
+        if req.url.path.endswith("/manager"):
+            return httpx.Response(404, json={"error": {"code": "Request_ResourceNotFound"}})
+        return httpx.Response(
+            200,
+            json={
+                "value": [
+                    {"@odata.type": "#microsoft.graph.user", "id": "u9", "displayName": "Z"},
+                    {"@odata.type": "#microsoft.graph.orgContact", "id": "c1"},
+                ]
+            },
+        )
+
+    svc, _ = make(handler)
+    assert svc.get_manager(UID) is None
+    assert [u.id for u in svc.list_direct_reports(UID)] == ["u9"]
+
+
+def test_ids_invalidos_nao_chegam_ao_graph():
+    svc, _ = make(lambda req: pytest.fail("não deveria chamar o Graph"))
+    assert svc.list_memberships("../users").groups == []
+    assert svc.list_license_states("x") == [] and svc.get_manager("x") is None
+    assert svc.list_direct_reports("x") == []

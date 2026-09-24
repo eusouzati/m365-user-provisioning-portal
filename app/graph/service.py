@@ -18,6 +18,8 @@ from app.graph.models import (
     AddressConflict,
     Domain,
     Group,
+    LicenseState,
+    Memberships,
     Organization,
     SubscribedSku,
     TapPolicy,
@@ -33,7 +35,7 @@ RETRY_STATUS = {429, 500, 502, 503, 504}
 _USER_FIELDS = "id,displayName,userPrincipalName,mail,jobTitle,department,accountEnabled,employeeId"
 _GROUP_FIELDS = (
     "id,displayName,description,securityEnabled,mailEnabled,groupTypes,"
-    "isAssignableToRole,assignedLicenses,mail"
+    "isAssignableToRole,assignedLicenses,mail,onPremisesSyncEnabled"
 )
 
 
@@ -44,9 +46,25 @@ class GraphService(Protocol):
     def get_tap_policy(self) -> TapPolicy | None: ...
     def list_groups(self) -> list[Group]: ...
     def get_user(self, user_id: str) -> UserSummary | None: ...
-    def search_users(self, query: str, top: int = 10) -> list[UserSummary]: ...
+    def search_users(
+        self, query: str, top: int = 10, include_disabled: bool = False
+    ) -> list[UserSummary]: ...
     def find_address_conflicts(self, address: str, mail_nickname: str) -> list[AddressConflict]: ...
     def find_users_by_employee_id(self, employee_id: str) -> list[UserSummary]: ...
+    # Sprint 8 — desligamento
+    def get_manager(self, user_id: str) -> UserSummary | None: ...
+    def list_direct_reports(self, user_id: str) -> list[UserSummary]: ...
+    def list_memberships(self, user_id: str) -> Memberships: ...
+    def list_license_states(self, user_id: str) -> list[LicenseState]: ...
+
+
+_GUID_RE = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+
+
+def is_guid(value: str) -> bool:
+    return bool(_GUID_RE.fullmatch(value or ""))
 
 
 def odata_str(value: str) -> str:
@@ -87,6 +105,7 @@ def _group(d: dict[str, Any]) -> Group:
             a["skuId"] for a in (d.get("assignedLicenses") or []) if a.get("skuId")
         ),
         mail=d.get("mail") or "",
+        on_premises=bool(d.get("onPremisesSyncEnabled")),
     )
 
 
@@ -259,13 +278,15 @@ class MsGraphService:
                 return None
             raise
 
-    def search_users(self, query: str, top: int = 10) -> list[UserSummary]:
+    def search_users(
+        self, query: str, top: int = 10, include_disabled: bool = False
+    ) -> list[UserSummary]:
         q = sanitize_search(query)
         if len(q) < 2:
             return []
         params = {
             "$search": f'"displayName:{q}" OR "userPrincipalName:{q}" OR "mail:{q}"',
-            "$filter": "accountEnabled eq true",
+            "$filter": "userType eq 'Member'" if include_disabled else "accountEnabled eq true",
             "$select": _USER_FIELDS,
             "$top": str(min(max(top, 1), 25)),
             "$count": "true",
@@ -324,6 +345,54 @@ class MsGraphService:
             advanced=True,
         )
         return [_user(u) for u in items]
+
+    # ------------------------------------------------------ desligamento
+    def get_manager(self, user_id: str) -> UserSummary | None:
+        if not is_guid(user_id):
+            return None
+        try:
+            return _user(self._get(f"users/{user_id}/manager", {"$select": _USER_FIELDS}))
+        except GraphError as exc:
+            if exc.status == 404:
+                return None
+            raise
+
+    def list_direct_reports(self, user_id: str) -> list[UserSummary]:
+        if not is_guid(user_id):
+            return []
+        items = self._get_all(f"users/{user_id}/directReports", {"$select": _USER_FIELDS})
+        return [_user(u) for u in items if u.get("@odata.type", "").endswith(".user")]
+
+    def list_memberships(self, user_id: str) -> Memberships:
+        """Grupos dos quais o usuário é membro DIRETO e quantas funções administrativas tem."""
+        out = Memberships()
+        if not is_guid(user_id):
+            return out
+        params = {"$top": "999", "$select": _GROUP_FIELDS}
+        for item in self._get_all(f"users/{user_id}/memberOf", params):
+            kind = item.get("@odata.type", "")
+            if kind == "#microsoft.graph.group":
+                out.groups.append(_group(item))
+            elif kind == "#microsoft.graph.directoryRole":
+                out.directory_roles += 1
+        out.groups.sort(key=lambda g: g.display_name.lower())
+        return out
+
+    def list_license_states(self, user_id: str) -> list[LicenseState]:
+        if not is_guid(user_id):
+            return []
+        d = self._get(f"users/{user_id}", {"$select": "id,licenseAssignmentStates"})
+        seen: dict[str, LicenseState] = {}
+        for s in d.get("licenseAssignmentStates") or []:
+            sku = s.get("skuId")
+            if not sku:
+                continue
+            by_group = bool(s.get("assignedByGroup"))
+            atual = seen.get(sku)
+            # Se houver atribuição direta, ela prevalece (precisa ser removida à parte).
+            if atual is None or (atual.by_group and not by_group):
+                seen[sku] = LicenseState(sku, by_group)
+        return list(seen.values())
 
 
 def _which(obj: dict[str, Any], address: str, nickname: str) -> str:

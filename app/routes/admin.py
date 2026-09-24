@@ -137,7 +137,13 @@ def all_requests(
     storage: StorageBackend = Depends(get_storage),
     principal: Principal = AdminDep,
 ) -> HTMLResponse:
-    itens = storage.list_requests(status=status if status in STATUS_LABELS else None, limit=500)
+    itens = [
+        r
+        for r in storage.list_requests(
+            status=status if status in STATUS_LABELS else None, limit=500
+        )
+        if not r.eh_alvo(principal.object_id)
+    ]
     return _render(
         request,
         "solicitacoes.html",
@@ -168,7 +174,7 @@ def run_lifecycle_now(
         "solicitacoes.html",
         settings,
         principal,
-        itens=storage.list_requests(limit=500),
+        itens=[r for r in storage.list_requests(limit=500) if not r.eh_alvo(principal.object_id)],
         titulo="Todas as solicitações",
         aba="solicitacoes",
         ciclo=report,

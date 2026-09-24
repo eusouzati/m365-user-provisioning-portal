@@ -8,6 +8,9 @@ manualmente pelo Administrador. Para cada conta criada:
       - LICENSE_MODE=direct: atribui o SKU diretamente (verifica unidades disponíveis)
   D0 (data de admissão): ativa a conta (accountEnabled=true)
 
+Também executa os desligamentos aprovados cujo horário de bloqueio chegou (Sprint 8,
+ver app/services/offboarding.py) e tenta de novo os que tiveram falha parcial.
+
 Estados: conta_criada → licenciada → ativa (sem licença: conta_criada → ativa).
 Idempotente: rodar várias vezes não duplica nada; falhas são tentadas de novo na próxima
 execução. A ativação só acontece depois que a licença (quando existir) foi atribuída.
@@ -21,10 +24,18 @@ from datetime import UTC, date, datetime
 
 from app.config import Settings
 from app.core.profiles import eligible_license_groups, eligible_skus
-from app.core.workflow import LIFECYCLE_KEYS, Etapa, ProvisioningRequest, transition
+from app.core.workflow import (
+    LIFECYCLE_KEYS,
+    Etapa,
+    ProvisioningRequest,
+    offboarded_ids,
+    transition,
+)
 from app.graph.directory import DirectoryCache
 from app.graph.errors import GraphError
 from app.graph.writer import GraphWriter
+from app.services.offboarding import EXECUTABLE as OFFBOARDING_EXECUTABLE
+from app.services.offboarding import OffboardingService, is_due
 from app.services.onboarding import today_in
 from app.services.provisioning import ensure_lifecycle_steps
 from app.storage import StorageBackend
@@ -47,6 +58,7 @@ class LifecycleReport:
     analisadas: int = 0
     licenciadas: list[str] = field(default_factory=list)
     ativadas: list[str] = field(default_factory=list)
+    desligadas: list[str] = field(default_factory=list)
     falhas: list[str] = field(default_factory=list)
     ignoradas_concorrencia: list[str] = field(default_factory=list)
 
@@ -57,6 +69,7 @@ class LifecycleReport:
             "analisadas": self.analisadas,
             "licenciadas": self.licenciadas,
             "ativadas": self.ativadas,
+            "desligadas": self.desligadas,
             "falhas": self.falhas,
             "ignoradasConcorrencia": self.ignoradas_concorrencia,
         }
@@ -81,17 +94,22 @@ class LifecycleService:
         self.directory = directory
         self.storage = storage
 
-    def run(self, today: date | None = None) -> LifecycleReport:
+    def run(self, today: date | None = None, now: datetime | None = None) -> LifecycleReport:
         hoje = today or today_in(self.settings)
         report = LifecycleReport(executado_em=datetime.now(UTC), dry_run=self.writer.dry_run)
         if self.writer.dry_run:
             logger.info("Ciclo de vida em DRY_RUN: nada será alterado")
             return report
 
+        todas = self.storage.list_requests(limit=1000)
+        desligados = offboarded_ids(todas)  # nunca ativar/licenciar conta em desligamento
         candidatos = [
             r
-            for r in self.storage.list_requests(limit=1000)
-            if r.status in ELIGIBLE and _provisioned(r)
+            for r in todas
+            if not r.eh_desligamento
+            and r.status in ELIGIBLE
+            and _provisioned(r)
+            and r.object_id.lower() not in desligados
         ][:MAX_PER_RUN]
         for req in candidatos:
             report.analisadas += 1
@@ -99,17 +117,45 @@ class LifecycleService:
                 self._process(req, hoje, report)
             except ConcurrencyError:
                 report.ignoradas_concorrencia.append(req.id)
+                self._undo_if_offboarded(req, report)
+
+        agora = now or datetime.now(UTC)
+        desligamentos = [
+            r
+            for r in todas
+            if r.eh_desligamento
+            and r.status in OFFBOARDING_EXECUTABLE
+            and is_due(r, self.settings, agora)
+        ][:MAX_PER_RUN]
+        offboarding = OffboardingService(
+            settings=self.settings,
+            writer=self.writer,
+            directory=self.directory,
+            storage=self.storage,
+        )
+        for req in desligamentos:
+            report.analisadas += 1
+            try:
+                req = offboarding.run(req)
+            except ConcurrencyError:
+                report.ignoradas_concorrencia.append(req.id)
+                continue
+            (report.desligadas if req.status == "desligada" else report.falhas).append(req.id)
+
         logger.info(
-            "Ciclo de vida: %s analisadas, %s licenciadas, %s ativadas, %s falhas",
+            "Ciclo de vida: %s analisadas, %s licenciadas, %s ativadas, %s desligadas, %s falhas",
             report.analisadas,
             len(report.licenciadas),
             len(report.ativadas),
+            len(report.desligadas),
             len(report.falhas),
         )
         return report
 
     # --------------------------------------------------------------------
     def _process(self, req: ProvisioningRequest, hoje: date, report: LifecycleReport) -> None:
+        if self._offboarded_now(req.object_id):
+            return  # desligamento aprovado depois da leitura inicial: não licencia nem ativa
         ensure_lifecycle_steps(req, self.settings)
         etapas = {e.chave: e for e in req.etapas}
         mudou = False
@@ -134,6 +180,8 @@ class LifecycleService:
                     mudou = True
             else:
                 mudou = True
+                if self._offboarded_now(req.object_id):
+                    return  # desligamento aprovado no meio desta execução: não ativa
                 if self._try(ativar, lambda: self.writer.enable_user(req.object_id)):
                     report.ativadas.append(req.id)
                 else:
@@ -151,6 +199,29 @@ class LifecycleService:
         else:
             transition(req, "conta_criada", "")
         self.storage.update_request(req)
+
+    def _offboarded_now(self, object_id: str) -> bool:
+        """Consulta atual (não a lista lida no início da execução)."""
+        return object_id.lower() in offboarded_ids(self.storage.list_requests(limit=1000))
+
+    def _undo_if_offboarded(self, req: ProvisioningRequest, report: LifecycleReport) -> None:
+        """Se a conta foi ativada nesta execução mas um desligamento foi aprovado ao mesmo
+        tempo (a gravação conflitou), bloqueia de novo: o desligamento sempre prevalece."""
+        mexeu = req.id in report.ativadas or req.id in report.licenciadas
+        if not mexeu or not self._offboarded_now(req.object_id):
+            return
+        try:
+            if req.id in report.ativadas:
+                self.writer.disable_user(req.object_id)
+            grupo = req.perfil.grupo_licenca
+            if req.id in report.licenciadas and grupo and self.settings.license_mode == "group":
+                self.writer.remove_group_member(grupo["id"], req.object_id)
+            logger.warning("Ativação/licença de %s desfeita: desligamento simultâneo", req.id)
+        except GraphError as exc:
+            logger.error("Falha ao desfazer a ativação de %s: %s", req.id, exc)
+        for lista in (report.ativadas, report.licenciadas):
+            if req.id in lista:
+                lista.remove(req.id)
 
     @staticmethod
     def _try(etapa: Etapa, action) -> bool:

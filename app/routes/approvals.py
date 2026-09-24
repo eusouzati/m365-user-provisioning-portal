@@ -25,6 +25,11 @@ from app.graph.errors import GraphError
 from app.graph.service import GraphService
 from app.graph.writer import GraphWriter
 from app.routes.requests import load_visible, render_detail, run_provisioning
+from app.services.offboarding import (
+    build_offboarding_review,
+    close_admissions,
+    run_offboarding_if_due,
+)
 from app.services.onboarding import ReviewError
 from app.services.requests_flow import pessoa, refresh_from_review, review_form
 from app.storage import StorageBackend
@@ -45,8 +50,11 @@ def queue(
     storage: StorageBackend = Depends(get_storage),
     principal: Principal = AprovadorDep,
 ) -> HTMLResponse:
-    pendentes = storage.list_requests(status="enviada")
-    recentes = [r for r in storage.list_requests(limit=50) if not r.pendente][:20]
+    oid = principal.object_id
+    pendentes = [r for r in storage.list_requests(status="enviada") if not r.eh_alvo(oid)]
+    recentes = [
+        r for r in storage.list_requests(limit=50) if not r.pendente and not r.eh_alvo(oid)
+    ][:20]
     return templates.TemplateResponse(
         request,
         "aprovacoes.html",
@@ -81,6 +89,10 @@ async def approve_request(
     if req is None:
         return RedirectResponse("/aprovacoes", status_code=303)
     comentario = str((await request.form()).get("comentario", ""))
+    if req.eh_desligamento:
+        return _approve_offboarding(
+            request, req, comentario, settings, graph, directory, storage, writer, principal
+        )
 
     # Revalida contra o estado ATUAL do tenant antes de aprovar.
     try:
@@ -134,6 +146,88 @@ async def approve_request(
     # Provisionamento logo após a aprovação (em DRY_RUN, apenas simulado).
     run_provisioning(req, settings=settings, writer=writer, directory=directory, storage=storage)
     return RedirectResponse(f"/solicitacoes/{request_id}?ok=aprovada", status_code=303)
+
+
+def _approve_offboarding(
+    request, req, comentario, settings, graph, directory, storage, writer, principal
+) -> Response:
+    from app.core.offboarding import OffboardingForm
+
+    if req.object_id.lower() == principal.object_id.lower():
+        return render_detail(
+            request,
+            settings,
+            principal,
+            req,
+            ["Você não pode aprovar o seu próprio desligamento."],
+            status=409,
+        )
+    # Revalida contra o estado ATUAL do tenant (colaborador existe, sem outro pedido em curso).
+    try:
+        form = OffboardingForm.model_validate(
+            {
+                "colaborador_id": req.object_id,
+                "data_desligamento": req.data_desligamento,
+                "imediato": "on" if req.dados.get("imediato") else "",
+                "observacao": req.dados.get("observacao", ""),
+            }
+        )
+        build_offboarding_review(
+            form,
+            settings=settings,
+            graph=graph,
+            directory=directory,
+            storage=storage,
+            principal=principal,
+            exclude_id=req.id,
+        )
+    except (ValidationError, ReviewError) as exc:
+        erros = getattr(exc, "erros", None) or ["Os dados da solicitação não são mais válidos."]
+        # A data pode ter ficado no passado entre o pedido e a aprovação: isso é permitido.
+        erros = [e for e in erros if not e.startswith("Último dia de trabalho")]
+        if erros:
+            return render_detail(
+                request,
+                settings,
+                principal,
+                req,
+                ["Não é possível aprovar: " + e for e in erros],
+                status=422,
+            )
+    except GraphError:
+        return render_detail(
+            request,
+            settings,
+            principal,
+            req,
+            ["Microsoft 365 indisponível. Tente novamente."],
+            status=503,
+        )
+    try:
+        approve(req, pessoa(principal), comentario)
+        req = storage.update_request(req)
+    except WorkflowError as exc:
+        return _conflict(request, settings, principal, storage, req.id, str(exc))
+    except ConcurrencyError:
+        return _conflict(
+            request,
+            settings,
+            principal,
+            storage,
+            req.id,
+            "A solicitação foi alterada por outra pessoa. Confira o status.",
+        )
+    logger.info("Desligamento %s aprovado por %s", req.id, principal.object_id)
+    # Admissão em andamento da mesma conta (ex.: não compareceu): nunca será ativada.
+    for rid in close_admissions(storage, req, pessoa(principal)):
+        logger.info("Admissão %s encerrada pelo desligamento %s", rid, req.id)
+    try:
+        run_offboarding_if_due(
+            req, settings=settings, writer=writer, directory=directory, storage=storage
+        )
+    except ConcurrencyError:
+        logger.warning("Desligamento %s alterado durante a execução", req.id)
+    return RedirectResponse(f"/solicitacoes/{req.id}?ok=aprovada", status_code=303)
 
 
 @router.post("/{request_id}/rejeitar", dependencies=[Depends(verify_csrf)])

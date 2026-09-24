@@ -32,7 +32,7 @@ def home(
         pendentes = sum(
             1
             for r in storage.list_requests(status="enviada")
-            if not r.eh_do_solicitante(principal.object_id)
+            if not r.eh_do_solicitante(principal.object_id) and not r.eh_alvo(principal.object_id)
         )
     if principal.has_any_role(Roles.SOLICITANTE):
         minhas = sum(

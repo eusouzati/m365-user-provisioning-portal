@@ -32,12 +32,13 @@ _DirectoryRoles = Depends(require_roles(Roles.SOLICITANTE, Roles.ADMINISTRADOR))
 @router.get("/diretorio/usuarios")
 def search_users(
     q: str = Query(min_length=2, max_length=64),
+    desativados: bool = False,
     graph: GraphService = Depends(get_graph),
     principal: Principal = _DirectoryRoles,
 ) -> JSONResponse:
-    """Busca de gestores (usuários ativos)."""
+    """Busca de usuários: ativos (gestor) ou também desativados (desligamento)."""
     try:
-        users = graph.search_users(q, top=10)
+        users = graph.search_users(q, top=10, include_disabled=desativados)
     except GraphError:
         return JSONResponse(status_code=503, content={"erro": "graph_indisponivel"})
     return JSONResponse(
@@ -48,6 +49,7 @@ def search_users(
                 "upn": u.user_principal_name,
                 "cargo": u.job_title,
                 "departamento": u.department,
+                "ativo": u.account_enabled,
             }
             for u in users
         ]

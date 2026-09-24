@@ -75,7 +75,17 @@ Requisitos no tenant: política de **Temporary Access Pass** habilitada (Entra a
 
 Teste: em **Administração → Todas as solicitações**, clique em **Executar ciclo de vida agora**. No dia da admissão, o gestor acessa **Minha equipe** e gera o acesso inicial.
 
-## 7. Solução de problemas
+## 7. Desligamento
+
+```powershell
+pwsh ./scripts/Set-GraphPermissions.ps1 -Environment lab -Nivel desligamento   # User.RevokeSessions.All
+az webapp restart -g rg-<prefixo>-<ambiente> -n <web-app>                     # renova o token da identidade
+pwsh ./scripts/Deploy-Application.ps1 -Environment lab
+```
+
+O agendador (a mesma Logic App) executa os desligamentos no horário do bloqueio (`OFFBOARDING_BLOCK_HOUR`, padrão 18h do último dia). Detalhes em [DESLIGAMENTO.md](DESLIGAMENTO.md).
+
+## 8. Solução de problemas
 
 - `/health/ready` com 503 logo após criar a infraestrutura: as permissões RBAC da Managed Identity podem levar até ~10 minutos para propagar.
 - Logs: `az webapp log tail -g rg-<prefixo>-lab -n <webAppName>`.

@@ -11,7 +11,7 @@ Navegador (RH / Aprovador / Gestor)
 Azure App Service (Linux, Python/FastAPI)  ──►  Azure Table Storage (solicitações, auditoria)
         │  Managed Identity (sem segredos)            ▲
         ▼                                             │
-Microsoft Graph (Entra ID / M365)   Azure Functions (agendador D-1 / D0 / desligamento) — Sprint 7
+Microsoft Graph (Entra ID / M365)   Logic App (agendador de hora em hora: D-1 / D0 / desligamento)
         │
 Application Insights / Log Analytics (sem dados sensíveis)
 ```

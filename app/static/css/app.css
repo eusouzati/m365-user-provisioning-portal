@@ -91,3 +91,10 @@ button[disabled] { opacity:.6; cursor:wait; }
 .et-simulado { background:#fff4d6; color:#8a5a00; }
 .tap-codigo { font-size:22px; letter-spacing:2px; padding:4px 10px; user-select:all; }
 .titulo-linha form { margin:0; }
+/* Sprint 8 — desligamento */
+.st-desligada { background:#3d4450; color:#fff; }
+.et-manual { background:#fff4d6; color:#8a5a00; font-weight:600; }
+.tipo { display:inline-block; font-size:11px; padding:1px 6px; border-radius:4px; border:1px solid var(--borda); color:#57606a; white-space:nowrap; }
+.tipo-desligamento { border-color:#b3261e; color:#b3261e; }
+.sem-marcador { list-style:none; margin:0; padding:0; }
+.sem-marcador li + li { margin-top:4px; }

@@ -9,6 +9,8 @@ from app.graph.models import (
     AddressConflict,
     Domain,
     Group,
+    LicenseState,
+    Memberships,
     Organization,
     SubscribedSku,
     TapPolicy,
@@ -95,6 +97,13 @@ class FakeGraphService:
                 account_enabled=False,
             ),
         ]
+        # Sprint 8 — associações do João Silva (u-3) para simular o desligamento
+        self.memberships: dict[str, list[str]] = {
+            "u-3": ["g-fin", "g-vpn", "g-lic-e3", "g-dyn", "g-all", "g-admins"],
+        }
+        self.directory_roles: dict[str, int] = {}
+        self.managers: dict[str, str] = {"u-3": "u-1"}
+        self.license_states: dict[str, list[LicenseState]] = {"u-3": [LicenseState(SKU_E3, True)]}
 
     def get_organization(self) -> Organization:
         self.calls.append("organization")
@@ -119,14 +128,16 @@ class FakeGraphService:
     def get_user(self, user_id: str) -> UserSummary | None:
         return next((u for u in self.users if user_id in (u.id, u.user_principal_name)), None)
 
-    def search_users(self, query: str, top: int = 10) -> list[UserSummary]:
+    def search_users(
+        self, query: str, top: int = 10, include_disabled: bool = False
+    ) -> list[UserSummary]:
         q = query.strip().lower()
         if len(q) < 2:
             return []
         hits = []
         for u in self.users:
             texto = f"{u.display_name} {u.user_principal_name}".lower()
-            if u.account_enabled and q in texto:
+            if (u.account_enabled or include_disabled) and q in texto:
                 hits.append(u)
         return hits[:top]
 
@@ -146,6 +157,24 @@ class FakeGraphService:
     def find_users_by_employee_id(self, employee_id: str) -> list[UserSummary]:
         return [u for u in self.users if u.employee_id and u.employee_id == employee_id]
 
+    def get_manager(self, user_id: str) -> UserSummary | None:
+        mid = self.managers.get(user_id)
+        return self.get_user(mid) if mid else None
+
+    def list_direct_reports(self, user_id: str) -> list[UserSummary]:
+        return [u for u in self.users if self.managers.get(u.id) == user_id]
+
+    def list_memberships(self, user_id: str) -> Memberships:
+        by_id = {g.id: g for g in self.groups}
+        grupos = [by_id[g] for g in self.memberships.get(user_id, []) if g in by_id]
+        return Memberships(
+            sorted(grupos, key=lambda g: g.display_name.lower()),
+            self.directory_roles.get(user_id, 0),
+        )
+
+    def list_license_states(self, user_id: str) -> list[LicenseState]:
+        return list(self.license_states.get(user_id, []))
+
 
 class FakeGraphWriter:
     """Escritor em memória para desenvolvimento local e testes (DRY_RUN=false + fake)."""
@@ -164,6 +193,14 @@ class FakeGraphWriter:
         self.taps: dict[str, str] = {}
         self.fail_enable = False
         self.fail_license = False
+        # Sprint 8
+        self.disabled: set[str] = set()
+        self.revoked: set[str] = set()
+        self.leave_dates: dict[str, str] = {}
+        self.removed: dict[str, set[str]] = {}
+        self.removed_licenses: dict[str, set[str]] = {}
+        self.fail_disable = False
+        self.fail_remove: set[str] = set()
 
     def create_user(self, body: dict) -> str:
         self.calls.append("create_user")
@@ -219,3 +256,38 @@ class FakeGraphWriter:
         code = f"TAP-{user_id}-{len(self.taps) + 1:03d}"
         self.taps[user_id] = code  # um TAP por usuário: substitui o anterior
         return code
+
+    # Sprint 8
+    def disable_user(self, user_id: str) -> None:
+        self.calls.append(f"disable:{user_id}")
+        if self.fail_disable:
+            from app.graph.errors import GraphError
+
+            raise GraphError("Graph 403 Authorization_RequestDenied: falha simulada", 403)
+        self.disabled.add(user_id)
+        self.enabled.discard(user_id)
+
+    def revoke_sessions(self, user_id: str) -> None:
+        self.calls.append(f"revoke:{user_id}")
+        self.revoked.add(user_id)
+
+    def set_leave_date(self, user_id: str, leave_utc_iso: str) -> None:
+        self.calls.append(f"leave:{user_id}")
+        self.leave_dates[user_id] = leave_utc_iso
+
+    def remove_group_member(self, group_id: str, user_id: str) -> bool:
+        self.calls.append(f"remove:{group_id}")
+        if group_id in self.fail_remove:
+            from app.graph.errors import GraphError
+
+            raise GraphError("Graph 403 Authorization_RequestDenied: falha simulada", 403)
+        s = self.removed.setdefault(group_id, set())
+        if user_id in s:
+            return False
+        s.add(user_id)
+        self.members.get(group_id, set()).discard(user_id)
+        return True
+
+    def remove_license(self, user_id: str, sku_id: str) -> None:
+        self.calls.append(f"unlicense:{sku_id}")
+        self.removed_licenses.setdefault(user_id, set()).add(sku_id)

@@ -2,19 +2,39 @@
 {% block title %}{{ req.id }} · {{ settings.app_name }}{% endblock %}
 {% block content %}
 <div class="titulo-linha">
-  <h1><code class="grande">{{ req.id }}</code></h1>
+  <h1><code class="grande">{{ req.id }}</code> <span class="tipo tipo-{{ req.tipo }}">{{ req.tipo_label }}</span></h1>
   <span class="status-sol st-{{ req.status }}">{{ req.status_label }}</span>
 </div>
 
 {% if ok == 'enviada' %}<div class="alerta alerta-ok">Solicitação enviada. Ela agora aguarda aprovação.</div>{% endif %}
-{% if ok == 'aprovada' %}<div class="alerta alerta-ok">Solicitação aprovada.{% if settings.dry_run %} DRY_RUN ativo: o provisionamento foi apenas simulado; nada foi criado no Microsoft 365.{% endif %}</div>{% endif %}
-{% if ok == 'provisionada' %}<div class="alerta alerta-ok">Provisionamento executado. Confira as etapas abaixo.</div>{% endif %}
+{% if ok == 'aprovada' %}<div class="alerta alerta-ok">Solicitação aprovada.{% if req.eh_desligamento and req.status == 'aprovada' and not settings.dry_run %} Bloqueio: {{ agendamento|lower }}{% endif %}{% if settings.dry_run %} DRY_RUN ativo: o {{ 'desligamento' if req.eh_desligamento else 'provisionamento' }} foi apenas simulado; nada foi alterado no Microsoft 365.{% endif %}</div>{% endif %}
+{% if ok == 'provisionada' %}<div class="alerta alerta-ok">{{ "Desligamento" if req.eh_desligamento else "Provisionamento" }} executado. Confira as etapas abaixo.</div>{% endif %}
+{% if req.status == 'desligada' and req.etapas|selectattr("status", "equalto", "manual")|list %}<div class="alerta alerta-aviso">Conta bloqueada. Restam ações manuais (destacadas abaixo) que o portal não faz sozinho.</div>{% endif %}
 {% if req.status == 'falha_parcial' %}<div class="alerta alerta-erro">Algumas etapas falharam. O que já foi feito foi mantido; um administrador pode reprocessar as etapas pendentes.</div>{% endif %}
 {% if ok == 'rejeitada' %}<div class="alerta alerta-ok">Solicitação rejeitada.</div>{% endif %}
 {% if ok == 'cancelada' %}<div class="alerta alerta-ok">Solicitação cancelada.</div>{% endif %}
 {% if erros %}<div class="alerta alerta-erro" role="alert"><ul>{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
 {% if propria_pendente %}<div class="alerta alerta-aviso">Você fez esta solicitação; outro aprovador precisa decidir.</div>{% endif %}
 
+{% if req.eh_desligamento %}
+<section class="painel">
+  <h2>Colaborador</h2>
+  <dl class="grade">
+    <dt>Nome</dt><dd>{{ req.conta.display_name }}</dd>
+    <dt>UPN (login)</dt><dd><code>{{ req.conta.user_principal_name }}</code></dd>
+    {% if req.dados.matricula %}<dt>Matrícula</dt><dd>{{ req.dados.matricula }}</dd>{% endif %}
+    {% if req.dados.cargo %}<dt>Cargo</dt><dd>{{ req.dados.cargo }}</dd>{% endif %}
+    {% if req.dados.departamento %}<dt>Departamento</dt><dd>{{ req.dados.departamento }}</dd>{% endif %}
+    <dt>Gestor</dt><dd>{{ req.gestor.nome or "—" }}{% if req.gestor.upn %} <span class="ajuda">({{ req.gestor.upn }})</span>{% endif %}</dd>
+    <dt>Último dia</dt><dd>{{ req.data_desligamento.strftime("%d/%m/%Y") }}</dd>
+    {% set bloq = req.etapas|selectattr("chave", "equalto", "bloquear")|selectattr("status", "equalto", "ok")|first %}
+    <dt>Bloqueio</dt><dd>{% if bloq %}Conta bloqueada em {{ bloq.em|data_local(True) }}{% elif req.status in ('enviada', 'aprovada', 'falha_parcial') %}{{ agendamento }}{% else %}Não realizado{% endif %}</dd>
+    {% if req.dados.observacao %}<dt>Observação</dt><dd>{{ req.dados.observacao }}</dd>{% endif %}
+    <dt>Solicitante</dt><dd>{{ req.solicitante.nome }}</dd>
+    <dt>Object ID (Entra)</dt><dd><code class="pequeno">{{ req.object_id }}</code></dd>
+  </dl>
+</section>
+{% else %}
 <section class="painel">
   <h2>Colaborador</h2>
   <dl class="grade">
@@ -37,10 +57,11 @@
     {% if req.object_id %}<dt>Object ID (Entra)</dt><dd><code class="pequeno">{{ req.object_id }}</code></dd>{% endif %}
   </dl>
 </section>
+{% endif %}
 
 {% if req.etapas %}
 <section class="painel">
-  <h2>Provisionamento</h2>
+  <h2>{{ "Desligamento" if req.eh_desligamento else "Provisionamento" }}</h2>
   <table class="tabela">
     <thead><tr><th>Etapa</th><th>Status</th><th>Detalhe</th><th>Quando</th></tr></thead>
     <tbody>
@@ -54,17 +75,22 @@
       {% endfor %}
     </tbody>
   </table>
+  {% if req.eh_desligamento %}
+  <p class="ajuda">O agendador executa o desligamento no horário do bloqueio (verificação de hora em hora) e tenta de novo o que falhar. A conta nunca é excluída.</p>
+  {% else %}
   <p class="ajuda">Licença (D-1) e ativação da conta (D0) são executadas automaticamente pelo agendador, de hora em hora. No dia da admissão, o gestor gera o acesso inicial em <a href="/equipe">Minha equipe</a>.</p>
+  {% endif %}
 </section>
 {% endif %}
 
 {% if pode_provisionar %}
 <form method="post" action="/solicitacoes/{{ req.id }}/provisionar" class="excluir" data-envio-unico>
   <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-  <button class="botao" type="submit">
-    {% if req.status == 'falha_parcial' %}Reprocessar etapas pendentes{% elif settings.dry_run %}Simular provisionamento (DRY_RUN){% else %}Criar conta no Microsoft 365{% endif %}
+  <button class="botao{% if req.eh_desligamento and req.status == 'aprovada' %} perigo{% endif %}" type="submit">
+    {% if req.status == 'falha_parcial' %}Reprocessar etapas pendentes{% elif req.eh_desligamento %}{% if settings.dry_run %}Simular desligamento (DRY_RUN){% else %}Executar desligamento agora{% endif %}{% elif settings.dry_run %}Simular provisionamento (DRY_RUN){% else %}Criar conta no Microsoft 365{% endif %}
   </button>
-  {% if not settings.dry_run and req.status == 'aprovada' %}<p class="ajuda">Atenção: DRY_RUN está desativado — a conta será criada de verdade (desativada e sem licença).</p>{% endif %}
+  {% if req.eh_desligamento and bloqueio_futuro and not settings.dry_run %}<p class="ajuda">Atenção: a conta será bloqueada agora, antes do horário agendado.</p>
+  {% elif not settings.dry_run and req.status == 'aprovada' and not req.eh_desligamento %}<p class="ajuda">Atenção: DRY_RUN está desativado — a conta será criada de verdade (desativada e sem licença).</p>{% endif %}
 </form>
 {% endif %}
 
@@ -80,7 +106,11 @@
       <button class="botao" type="submit" formaction="/aprovacoes/{{ req.id }}/aprovar">Aprovar</button>
       <button class="botao perigo" type="submit" formaction="/aprovacoes/{{ req.id }}/rejeitar">Rejeitar</button>
     </div>
+    {% if req.eh_desligamento %}
+    <p class="ajuda">Ao aprovar, o colaborador é conferido novamente no Microsoft 365. Bloqueio: {{ agendamento|lower }}</p>
+    {% else %}
     <p class="ajuda">Ao aprovar, os dados são conferidos novamente no Microsoft 365 (UPN, matrícula, gestor e perfil).</p>
+    {% endif %}
   </form>
 </section>
 {% endif %}
@@ -88,7 +118,7 @@
 {% if pode_cancelar %}
 <form method="post" action="/solicitacoes/{{ req.id }}/cancelar" class="excluir" data-envio-unico>
   <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
-  <button class="botao perigo" type="submit">Cancelar solicitação</button>
+  <button class="botao perigo" type="submit">{{ "Cancelar desligamento agendado" if req.status == 'aprovada' else "Cancelar solicitação" }}</button>
 </form>
 {% endif %}
 
