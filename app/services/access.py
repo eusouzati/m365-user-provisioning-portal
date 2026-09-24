@@ -54,6 +54,27 @@ def tap_lifetime(settings: Settings, graph: GraphService) -> int:
     return max(minutos, 10)
 
 
+def _tap_error_message(exc: GraphError) -> str:
+    """Mensagem útil ao gestor, com o motivo informado pelo Microsoft Graph (nunca o código)."""
+    if exc.status == 403:
+        return (
+            "O portal não tem permissão para gerar o acesso inicial "
+            "(UserAuthenticationMethod.ReadWrite.All). Peça ao administrador para executar "
+            "Set-GraphPermissions.ps1 -Nivel ciclo-de-vida e reiniciar o App Service. "
+            f"Detalhe: {exc}"
+        )
+    if 400 <= exc.status < 500:
+        return (
+            "O Microsoft 365 recusou o acesso inicial. Verifique se a política de "
+            "Temporary Access Pass está habilitada e inclui este usuário (Entra ID → "
+            f"Métodos de autenticação → Temporary Access Pass). Detalhe: {exc}"
+        )
+    return (
+        "Não foi possível gerar o acesso inicial agora. Tente novamente em instantes. "
+        f"Detalhe: {exc}"
+    )
+
+
 def generate_initial_access(
     req: ProvisioningRequest,
     principal: Principal,
@@ -75,9 +96,7 @@ def generate_initial_access(
         codigo = writer.create_temporary_access_pass(req.object_id, minutos)
     except GraphError as exc:
         logger.warning("Falha ao gerar TAP de %s: %s", req.id, exc)
-        raise AccessError(
-            "Não foi possível gerar o acesso inicial agora. Tente novamente em instantes."
-        ) from exc
+        raise AccessError(_tap_error_message(exc)) from exc
     note(
         req,
         pessoa(principal),

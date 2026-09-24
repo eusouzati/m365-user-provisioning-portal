@@ -146,6 +146,25 @@ def test_tap_respeita_maximo_da_politica(c):
     assert c.app.state.writer.calls[-1].endswith(":120")
 
 
+@pytest.mark.parametrize(
+    ("status", "trecho"),
+    [(403, "não tem permissão"), (400, "recusou"), (503, "Tente novamente")],
+)
+def test_tap_erro_do_graph_mostra_motivo(c, status, trecho):
+    from app.graph.errors import GraphError
+
+    rid = conta_para_hoje(c)
+    c.post("/interno/ciclo-de-vida", headers=AGENDADOR)
+
+    def falha(user_id, minutes):
+        raise GraphError(f"Graph {status} Codigo: motivo simulado", status)
+
+    c.app.state.writer.create_temporary_access_pass = falha
+    resp = c.post(f"/equipe/{rid}/acesso-inicial", data={"csrf_token": csrf(c)}, headers=GESTORA)
+    assert resp.status_code == 409
+    assert trecho in resp.text and "motivo simulado" in resp.text
+
+
 def test_tap_exige_csrf(c):
     rid = conta_para_hoje(c)
     c.post("/interno/ciclo-de-vida", headers=AGENDADOR)
