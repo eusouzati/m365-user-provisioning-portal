@@ -62,7 +62,10 @@ $common = @(
     "protectedGroupIds=$protected",
     "licenseMode=$(if ($cfg['LICENSE_MODE']) { $cfg['LICENSE_MODE'] } else { 'group' })",
     "dryRun=$(if ($cfg['DRY_RUN'] -eq 'false') { 'false' } else { 'true' })",
-    "provisioningDailyLimit=$(if ($cfg['PROVISIONING_DAILY_LIMIT']) { $cfg['PROVISIONING_DAILY_LIMIT'] } else { '20' })"
+    "provisioningDailyLimit=$(if ($cfg['PROVISIONING_DAILY_LIMIT']) { $cfg['PROVISIONING_DAILY_LIMIT'] } else { '20' })",
+    "offboardingBlockHour=$(if ($cfg['OFFBOARDING_BLOCK_HOUR']) { $cfg['OFFBOARDING_BLOCK_HOUR'] } else { '18' })",
+    "lgpdRetentionDays=$(if ($cfg['LGPD_RETENTION_DAYS']) { $cfg['LGPD_RETENTION_DAYS'] } else { '0' })",
+    "privacyContact=$($cfg['PRIVACY_CONTACT'])"
 )
 
 if ($cfg['DRY_RUN'] -eq 'false') {

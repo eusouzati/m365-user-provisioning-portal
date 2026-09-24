@@ -36,7 +36,7 @@ Application Insights / Log Analytics (sem dados sensíveis)
 | Managed Identity | `id-<prefixo>-<ambiente>` |
 | App Service Plan | `asp-<prefixo>-<ambiente>` |
 | Web App | `app-<prefixo>-<ambiente>-<sufixo>` |
-| Storage Account | `st<prefixo><lab\|prd><sufixo>` (tabelas `solicitacoes`, `auditoria`; fila `tarefas`) |
+| Storage Account | `st<prefixo><lab\|prd><sufixo>` (tabelas `solicitacoes`, `auditoria`, `perfis`, `estado`; fila `tarefas`) |
 | Log Analytics | `log-<prefixo>-<ambiente>` |
 | Application Insights | `appi-<prefixo>-<ambiente>` |
 

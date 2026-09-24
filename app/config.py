@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     hire_date_future_days: int = Field(default=365, ge=1, le=730)
     # Desligamento: hora local do último dia de trabalho em que a conta é bloqueada
     offboarding_block_hour: int = Field(default=18, ge=0, le=23)
+    # LGPD: dias após a conclusão para anonimizar os dados pessoais das solicitações
+    # (0 = desativado). Contato do encarregado (DPO) exibido no aviso de privacidade.
+    lgpd_retention_days: int = Field(default=0, ge=0, le=3650)
+    privacy_contact: str = Field(default="", max_length=200)
     # Grupos que NUNCA podem ser usados em perfis (ex.: grupos dos papéis do portal)
     protected_group_ids: str = ""
 

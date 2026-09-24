@@ -1,5 +1,8 @@
 <nav class="subnav">
-  <a href="/admin" {% if aba == 'visao' %}aria-current="page"{% endif %}>Capacidades do tenant</a>
+  <a href="/admin/painel" {% if aba == 'painel' %}aria-current="page"{% endif %}>Painel</a>
   <a href="/admin/solicitacoes" {% if aba == 'solicitacoes' %}aria-current="page"{% endif %}>Todas as solicitações</a>
+  <a href="/admin/auditoria" {% if aba == 'auditoria' %}aria-current="page"{% endif %}>Auditoria</a>
   <a href="/admin/perfis" {% if aba == 'perfis' %}aria-current="page"{% endif %}>Perfis de onboarding</a>
+  <a href="/admin" {% if aba == 'visao' %}aria-current="page"{% endif %}>Capacidades do tenant</a>
+  <a href="/admin/privacidade" {% if aba == 'privacidade' %}aria-current="page"{% endif %}>Privacidade (LGPD)</a>
 </nav>

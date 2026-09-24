@@ -21,7 +21,7 @@
   {{ ciclo.analisadas }} conta(s) analisada(s) ·
   {{ ciclo.licenciadas|length }} licenciada(s){% if ciclo.licenciadas %} ({{ ciclo.licenciadas|join(", ") }}){% endif %} ·
   {{ ciclo.ativadas|length }} ativada(s){% if ciclo.ativadas %} ({{ ciclo.ativadas|join(", ") }}){% endif %} ·
-  {{ ciclo.desligadas|length }} desligamento(s){% if ciclo.desligadas %} ({{ ciclo.desligadas|join(", ") }}){% endif %}
+  {{ ciclo.desligadas|length }} desligamento(s){% if ciclo.desligadas %} ({{ ciclo.desligadas|join(", ") }}){% endif %}{% if ciclo.anonimizadas %} · {{ ciclo.anonimizadas|length }} anonimizada(s) (LGPD){% endif %}
   {% if ciclo.falhas %} · <strong>{{ ciclo.falhas|length }} com falha</strong> ({{ ciclo.falhas|join(", ") }}) — será tentado de novo na próxima execução.{% endif %}
   {% endif %}
 </div>

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Painel · {{ settings.app_name }}{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+<h1>Painel</h1>
+
+<div class="numeros">
+  <a class="numero" href="/aprovacoes"><span class="valor">{{ d.pendentes }}</span><span class="rotulo">Aguardando aprovação</span></a>
+  <a class="numero" href="/admin/solicitacoes"><span class="valor">{{ d.em_andamento }}</span><span class="rotulo">Em andamento</span></a>
+  <a class="numero {% if d.falhas %}numero-alerta{% endif %}" href="/admin/solicitacoes?status=falha_parcial"><span class="valor">{{ d.falhas|length }}</span><span class="rotulo">{% if d.falhas %}⚠ {% endif %}Com falha</span></a>
+  <div class="numero"><span class="valor">{{ d.admissoes|length }}</span><span class="rotulo">Admissões em 7 dias</span></div>
+  <div class="numero"><span class="valor">{{ d.desligamentos|length }}</span><span class="rotulo">Desligamentos em 7 dias</span></div>
+</div>
+
+<section class="painel">
+  <h2>Agendador</h2>
+  {% if d.ultimo_ciclo %}
+  <p>Última execução: <strong>{{ d.ultimo_ciclo.executadoEm|data_iso_local }}</strong>{% if d.ultimo_ciclo.dryRun %} <span class="tag">DRY_RUN</span>{% endif %} —
+    {{ d.ultimo_ciclo.analisadas }} analisada(s), {{ d.ultimo_ciclo.ativadas|length }} ativada(s), {{ d.ultimo_ciclo.desligadas|length }} desligamento(s),
+    {{ d.ultimo_ciclo.falhas|length }} falha(s){% if d.ultimo_ciclo.anonimizadas %}, {{ d.ultimo_ciclo.anonimizadas|length }} anonimizada(s){% endif %}.</p>
+  <p class="ajuda">O agendador roda de hora em hora. Se a última execução tiver mais de 2 horas, confira o histórico da Logic App no portal do Azure.</p>
+  {% else %}
+  <p class="ajuda">Nenhuma execução registrada ainda. O agendador roda de hora em hora; você também pode executar em <a href="/admin/solicitacoes">Todas as solicitações</a>.</p>
+  {% endif %}
+</section>
+
+{% if d.falhas %}
+<section class="painel">
+  <h2>Com falha — precisam de atenção</h2>
+  {% set itens = d.falhas %}{% set mostrar_solicitante = true %}{% include "_lista_solicitacoes.html" %}
+</section>
+{% endif %}
+
+<section class="painel">
+  <h2>Próximos 7 dias</h2>
+  {% set itens = d.admissoes + d.desligamentos %}{% set mostrar_solicitante = false %}{% set vazio = "Nenhuma admissão ou desligamento nos próximos 7 dias." %}
+  {% include "_lista_solicitacoes.html" %}
+</section>
+
+<section class="painel">
+  <h2>Licenças</h2>
+  {% if d.licencas_erro %}<p class="ajuda">{{ d.licencas_erro }}</p>{% else %}
+  <div class="rolagem">
+  <table class="tabela">
+    <thead><tr><th>Licença</th><th class="num">Disponíveis</th><th class="num">Em uso</th><th class="num">Total</th></tr></thead>
+    <tbody>
+      {% for s in d.licencas %}
+      <tr><td>{{ sku_name(s.sku_part_number) }}</td>
+        <td class="num {% if s.available_units <= 2 %}zerado{% endif %}">{{ s.available_units }}{% if s.available_units <= 2 %} <span class="tag">poucas</span>{% endif %}</td>
+        <td class="num">{{ s.consumed_units }}</td><td class="num">{{ s.enabled_units }}</td></tr>
+      {% else %}<tr><td colspan="4">Nenhuma licença de usuário encontrada.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% endif %}
+</section>
+
+<section class="painel">
+  <h2>Solicitações por status</h2>
+  <ul class="lista-status">
+    {% for s, rotulo, n in d.por_status %}<li><a href="/admin/solicitacoes?status={{ s }}"><span class="status-sol st-{{ s }}">{{ rotulo }}</span> {{ n }}</a></li>{% else %}<li>Nenhuma solicitação ainda.</li>{% endfor %}
+  </ul>
+</section>
+
+<section class="painel">
+  <h2>Atividade recente</h2>
+  {% set eventos = d.recentes %}{% include "_lista_auditoria.html" %}
+  <p><a href="/admin/auditoria">Ver a auditoria completa →</a></p>
+</section>
+
+{% if d.anonimizaveis %}<div class="alerta alerta-aviso"><a href="/admin/privacidade">{{ d.anonimizaveis }} solicitação(ões) já passaram do prazo de retenção (LGPD).</a></div>{% endif %}
+{% endblock %}

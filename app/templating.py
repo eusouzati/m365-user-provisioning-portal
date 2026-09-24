@@ -26,6 +26,17 @@ def _data_local(value, com_hora: bool = False) -> str:
     return local.strftime("%d/%m/%Y %H:%M" if com_hora else "%d/%m/%Y")
 
 
+def _data_iso_local(value: str) -> str:
+    """Texto ISO (estado salvo em JSON) → data/hora local."""
+    from datetime import datetime
+
+    try:
+        return _data_local(datetime.fromisoformat(value), True)
+    except (TypeError, ValueError):
+        return "—"
+
+
 templates.env.filters["data_local"] = _data_local
+templates.env.filters["data_iso_local"] = _data_iso_local
 templates.env.globals["status_labels"] = STATUS_LABELS
 templates.env.globals["etapa_labels"] = ETAPA_STATUS_LABELS

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import time
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 
+from app.core.audit import AuditEvent
 from app.core.profiles import OnboardingProfile
 from app.core.workflow import REQUEST_ID_RE, ProvisioningRequest, format_request_id
 from app.storage.errors import ConcurrencyError, DuplicateRequestError
@@ -10,6 +12,16 @@ from app.storage.errors import ConcurrencyError, DuplicateRequestError
 PROFILES_TABLE = "perfis"
 PROFILES_PARTITION = "perfil"
 REQUESTS_TABLE = "solicitacoes"
+AUDIT_TABLE = "auditoria"
+STATE_TABLE, STATE_PARTITION = "estado", "estado"
+_MAX_MS = 10**13 - 1  # RowKey decrescente: mais recente primeiro
+
+
+def _ts(dt: datetime) -> str:
+    """Formato fixo (comparável como texto nos filtros)."""
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
 PK_REQUEST, PK_COUNTER, PK_IDEM = "req", "contador", "idem"
 
 
@@ -188,3 +200,62 @@ class AzureTableStorage:
         )
         itens = sorted(rows, key=lambda r: (r["criado_em"], r["RowKey"]), reverse=True)[:limit]
         return [ProvisioningRequest.model_validate_json(r["dados"]) for r in itens]
+
+    # ------------------------------------------------------------ auditoria
+    # PartitionKey = mês (AAAAMM); RowKey decrescente no tempo (mais recente primeiro).
+    def append_audit(self, event: AuditEvent) -> None:
+        em = event.em.astimezone(UTC)
+        ms = int(em.timestamp() * 1000)
+        self._table(AUDIT_TABLE).create_entity(
+            {
+                "PartitionKey": f"{em:%Y%m}",
+                "RowKey": f"{_MAX_MS - ms:013d}-{event.id[-8:]}",
+                "em": _ts(em),
+                "acao": event.acao,
+                "alvo": event.alvo,
+                "dados": event.model_dump_json(),
+            }
+        )
+
+    def list_audit(
+        self,
+        *,
+        inicio: datetime | None = None,
+        fim: datetime | None = None,
+        limit: int = 500,
+    ) -> list[AuditEvent]:
+        fim_utc = (fim or datetime.now(UTC)).astimezone(UTC)
+        inicio_utc = (inicio or fim_utc - timedelta(days=730)).astimezone(UTC)
+        table = self._table(AUDIT_TABLE)
+        out: list[AuditEvent] = []
+        ano, mes = fim_utc.year, fim_utc.month
+        while (ano, mes) >= (inicio_utc.year, inicio_utc.month) and len(out) < limit:
+            filtro = (
+                f"PartitionKey eq '{ano:04d}{mes:02d}' and em ge '{_ts(inicio_utc)}' "
+                f"and em lt '{_ts(fim_utc)}'"
+            )
+            for row in table.query_entities(filtro, select=["dados"]):
+                out.append(AuditEvent.model_validate_json(row["dados"]))
+                if len(out) >= limit:
+                    break
+            ano, mes = (ano, mes - 1) if mes > 1 else (ano - 1, 12)
+        return out
+
+    # --------------------------------------------------------------- estado
+    def get_state(self, key: str) -> dict | None:
+        from azure.core.exceptions import ResourceNotFoundError
+
+        try:
+            row = self._table(STATE_TABLE).get_entity(STATE_PARTITION, key)
+        except ResourceNotFoundError:
+            return None
+        return json.loads(row["dados"])
+
+    def set_state(self, key: str, value: dict) -> None:
+        self._table(STATE_TABLE).upsert_entity(
+            {
+                "PartitionKey": STATE_PARTITION,
+                "RowKey": key,
+                "dados": json.dumps(value, default=str),
+            }
+        )

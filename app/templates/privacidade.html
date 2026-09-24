@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Aviso de privacidade · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Aviso de privacidade</h1>
+<section class="painel texto">
+  <h2>Para que serve</h2>
+  <p>Este portal registra as solicitações do RH para criar e desligar contas de colaboradores no Microsoft 365 da organização, com aprovação e rastreabilidade.</p>
+  <h2>Quais dados são tratados</h2>
+  <ul>
+    <li><strong>Do colaborador:</strong> nome, login e e-mail corporativos, matrícula, cargo, departamento, unidade, gestor e datas de admissão ou de desligamento. O motivo do desligamento não é registrado.</li>
+    <li><strong>De quem usa o portal:</strong> nome e identificador corporativo de quem solicitou, aprovou ou executou cada ação (trilha de auditoria).</li>
+  </ul>
+  <p>Senhas e códigos de acesso temporário nunca são armazenados.</p>
+  <h2>Base legal e finalidade</h2>
+  <p>Execução do contrato de trabalho e legítimo interesse da organização na gestão e na segurança dos acessos (LGPD, art. 7º, V e IX).</p>
+  <h2>Por quanto tempo</h2>
+  {% if settings.lgpd_retention_days %}
+  <p>Os dados pessoais de cada solicitação são anonimizados {{ settings.lgpd_retention_days }} dias após a sua conclusão. A trilha de auditoria guarda apenas quem executou cada ação e o número da solicitação.</p>
+  {% else %}
+  <p>Pelo prazo definido pela política de retenção da organização. A trilha de auditoria guarda apenas quem executou cada ação e o número da solicitação.</p>
+  {% endif %}
+  <h2>Onde ficam</h2>
+  <p>Na assinatura Azure e no tenant Microsoft 365 da própria organização. Nenhum dado é enviado a terceiros pelo portal.</p>
+  <h2>Seus direitos</h2>
+  <p>Para acesso, correção ou dúvidas sobre seus dados, fale com o encarregado de dados{% if settings.privacy_contact %}: <strong>{{ settings.privacy_contact }}</strong>{% else %} da organização{% endif %}.</p>
+</section>
+{% endblock %}

@@ -190,6 +190,12 @@ def get_current_principal(
 ) -> Principal:
     if principal is None:
         raise NotAuthenticatedError("nao_autenticado")
+    from app.core.audit import set_actor
+
+    nome = principal.name or principal.username
+    if principal.is_scheduler:
+        nome = "Agendador (Logic App)"
+    set_actor(principal.object_id, nome or principal.object_id)
     return principal
 
 

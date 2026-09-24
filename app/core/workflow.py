@@ -133,6 +133,8 @@ class Etapa(BaseModel):
 
 
 SISTEMA = Pessoa(oid="sistema", nome="Portal (automático)")
+ANON = "[anonimizado]"
+ANON_NOTE = "Dados pessoais anonimizados"
 
 
 class ProvisioningRequest(BaseModel):
@@ -154,6 +156,7 @@ class ProvisioningRequest(BaseModel):
     etapas: list[Etapa] = Field(default_factory=list)
     object_id: str = ""  # ID do usuário no Entra (criado na admissão; alvo no desligamento)
     execucao_em: datetime | None = None  # desligamento: início da execução (trava o cancelamento)
+    anonimizado_em: datetime | None = None  # LGPD: dados pessoais removidos
     versao: int = 1
 
     @property

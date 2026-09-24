@@ -98,3 +98,19 @@ button[disabled] { opacity:.6; cursor:wait; }
 .tipo-desligamento { border-color:#b3261e; color:#b3261e; }
 .sem-marcador { list-style:none; margin:0; padding:0; }
 .sem-marcador li + li { margin-top:4px; }
+/* Sprint 9 — painel, auditoria e privacidade */
+.numeros { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin:16px 0 20px; }
+.numero { display:flex; flex-direction:column; gap:4px; padding:14px 16px; background:#fff; border:1px solid var(--borda); border-radius:8px; color:inherit; text-decoration:none; }
+a.numero:hover { border-color:#0f5cc0; }
+.numero .valor { font-size:30px; font-weight:700; line-height:1.1; font-variant-numeric:tabular-nums; }
+.numero .rotulo { font-size:13px; color:#57606a; }
+.numero-alerta { border-color:#b3261e; }
+.numero-alerta .valor { color:#b3261e; }
+.lista-status { list-style:none; margin:0; padding:0; display:flex; flex-wrap:wrap; gap:8px 16px; }
+.lista-status a { color:inherit; text-decoration:none; }
+.filtros { margin-bottom:16px; }
+.alinhar-base { align-items:flex-end; }
+.texto h2 { font-size:17px; margin-top:18px; }
+.texto h2:first-child { margin-top:0; }
+.rodape a { color:inherit; }
+.tabela td code.pequeno { white-space:nowrap; }

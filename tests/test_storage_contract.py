@@ -39,7 +39,7 @@ def storage(request, tmp_path):
     from app.storage.azure_table import AzureTableStorage
 
     s = AzureTableStorage(connection_string=AZURITE)
-    for t in ("solicitacoes", "perfis"):
+    for t in ("solicitacoes", "perfis", "auditoria", "estado"):
         s._client.delete_table(t)
     s._tables.clear()
     return s
@@ -124,3 +124,30 @@ def test_concorrencia_otimista(storage):
         storage.update_request(leitura2)
     assert storage.get_request(a.id).status == "aprovada"
     assert [r.id for r in storage.list_requests(status="aprovada")] == [a.id]
+
+
+# ------------------------------------------------------------ Sprint 9
+def test_auditoria_ordem_e_periodo(storage):
+    from datetime import UTC, datetime, timedelta
+
+    from app.core.audit import AuditEvent
+
+    base = datetime(2026, 8, 31, 23, 0, tzinfo=UTC)
+    for i in range(5):  # atravessa a virada do mês (partições diferentes no Azure)
+        storage.append_audit(
+            AuditEvent(
+                em=base + timedelta(hours=i), ator_oid="o", ator_nome="A", acao=f"a{i}", alvo="R"
+            )
+        )
+    todos = storage.list_audit(inicio=base - timedelta(days=1), fim=base + timedelta(days=1))
+    assert [e.acao for e in todos] == ["a4", "a3", "a2", "a1", "a0"]
+    janela = storage.list_audit(inicio=base + timedelta(hours=1), fim=base + timedelta(hours=3))
+    assert [e.acao for e in janela] == ["a2", "a1"]
+    assert len(storage.list_audit(inicio=base - timedelta(days=1), limit=2)) == 2
+
+
+def test_estado(storage):
+    assert storage.get_state("ultimo_ciclo") is None
+    storage.set_state("ultimo_ciclo", {"analisadas": 1})
+    storage.set_state("ultimo_ciclo", {"analisadas": 2})
+    assert storage.get_state("ultimo_ciclo") == {"analisadas": 2}

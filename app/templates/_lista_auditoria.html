@@ -1,0 +1,18 @@
+<div class="rolagem">
+<table class="tabela">
+  <thead><tr><th>Quando</th><th>Ação</th><th>Alvo</th><th>Quem</th><th>Detalhe</th></tr></thead>
+  <tbody>
+    {% for e in eventos %}
+    <tr>
+      <td class="ajuda">{{ e.em|data_local(True) }}</td>
+      <td>{{ e.acao_label }}{% if e.tipo == 'desligamento' %} <span class="tipo tipo-desligamento">Desligamento</span>{% endif %}</td>
+      <td>{% if e.alvo.startswith('REQ-') %}<a href="/solicitacoes/{{ e.alvo }}"><code class="pequeno">{{ e.alvo }}</code></a>{% else %}<code class="pequeno">{{ e.alvo or "—" }}</code>{% endif %}</td>
+      <td>{{ e.ator_nome }}</td>
+      <td class="ajuda">{{ e.detalhe }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">Nenhum evento.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>

@@ -51,6 +51,19 @@ param dryRun bool = true
 @minValue(1)
 param provisioningDailyLimit int = 20
 
+@description('Hora local (0-23) do último dia de trabalho em que a conta é bloqueada.')
+@minValue(0)
+@maxValue(23)
+param offboardingBlockHour int = 18
+
+@description('LGPD: dias após a conclusão para anonimizar os dados pessoais das solicitações (0 = desativado).')
+@minValue(0)
+@maxValue(3650)
+param lgpdRetentionDays int = 0
+
+@description('Contato do encarregado de dados (DPO) exibido no aviso de privacidade.')
+param privacyContact string = ''
+
 @description('Cria o agendador (Logic App) que executa o ciclo de vida de hora em hora.')
 param enableScheduler bool = true
 
@@ -85,6 +98,9 @@ module resources 'modules/resources.bicep' = {
     licenseMode: licenseMode
     dryRun: dryRun
     provisioningDailyLimit: provisioningDailyLimit
+    offboardingBlockHour: offboardingBlockHour
+    lgpdRetentionDays: lgpdRetentionDays
+    privacyContact: privacyContact
     enableScheduler: enableScheduler
     tags: allTags
   }

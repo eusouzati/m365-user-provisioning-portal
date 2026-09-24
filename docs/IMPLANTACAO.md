@@ -85,7 +85,18 @@ pwsh ./scripts/Deploy-Application.ps1 -Environment lab
 
 O agendador (a mesma Logic App) executa os desligamentos no horário do bloqueio (`OFFBOARDING_BLOCK_HOUR`, padrão 18h do último dia). Detalhes em [DESLIGAMENTO.md](DESLIGAMENTO.md).
 
-## 8. Solução de problemas
+## 8. Auditoria, painel e LGPD
+
+Opcional, no `.env` (depois rode `Deploy-Infrastructure.ps1` para levar ao App Service):
+
+```text
+LGPD_RETENTION_DAYS=730
+PRIVACY_CONTACT=dpo@suaempresa.com.br
+```
+
+Nada muda no Microsoft 365 nem nas permissões. Detalhes em [AUDITORIA_E_LGPD.md](AUDITORIA_E_LGPD.md).
+
+## 9. Solução de problemas
 
 - `/health/ready` com 503 logo após criar a infraestrutura: as permissões RBAC da Managed Identity podem levar até ~10 minutos para propagar.
 - Logs: `az webapp log tail -g rg-<prefixo>-lab -n <webAppName>`.

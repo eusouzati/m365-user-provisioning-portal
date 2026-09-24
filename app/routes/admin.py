@@ -21,7 +21,7 @@ from app.core.profiles import (
     resolve_selection,
 )
 from app.core.skus import friendly_sku_name
-from app.core.workflow import STATUS_LABELS
+from app.core.workflow import STATUS_LABELS, offboarded_ids
 from app.csrf import verify_csrf
 from app.dependencies import get_app_settings, get_directory, get_storage, get_writer
 from app.graph.directory import DirectoryCache
@@ -152,6 +152,7 @@ def all_requests(
         itens=itens,
         titulo="Todas as solicitações",
         aba="solicitacoes",
+        desligados=offboarded_ids(storage.list_requests(limit=1000)),
     )
 
 
@@ -178,6 +179,7 @@ def run_lifecycle_now(
         titulo="Todas as solicitações",
         aba="solicitacoes",
         ciclo=report,
+        desligados=offboarded_ids(storage.list_requests(limit=1000)),
     )
 
 
@@ -412,3 +414,189 @@ def delete_profile(
         storage.delete_profile(profile_id)
         logger.info("Perfil %s excluído por %s", profile_id, principal.object_id)
     return RedirectResponse("/admin/perfis?ok=excluido", status_code=303)
+
+
+# ---------------------------------------------------------------------- painel
+@router.get("/painel", response_class=HTMLResponse)
+def dashboard(
+    request: Request,
+    settings: Settings = Depends(get_app_settings),
+    storage: StorageBackend = Depends(get_storage),
+    directory: DirectoryCache = Depends(get_directory),
+    principal: Principal = AdminDep,
+) -> HTMLResponse:
+    from app.services.dashboard import build_dashboard
+
+    return _render(
+        request,
+        "painel.html",
+        settings,
+        principal,
+        d=build_dashboard(storage, directory, settings),
+        aba="painel",
+    )
+
+
+# ------------------------------------------------------------------- auditoria
+AUDIT_LIMIT, AUDIT_EXPORT_LIMIT = 500, 20000
+
+
+def _audit_query(storage, settings, acao, alvo, ator, de, ate, limit):
+    from datetime import date as _date
+    from datetime import time, timedelta
+    from zoneinfo import ZoneInfo
+
+    tz = ZoneInfo(settings.timezone)
+
+    def _dia(v: str):
+        try:
+            return _date.fromisoformat(v) if v else None
+        except ValueError:
+            return None
+
+    d_de, d_ate = _dia(de), _dia(ate)
+    inicio = datetime.combine(d_de, time(0), tz) if d_de else None
+    fim = datetime.combine(d_ate + timedelta(days=1), time(0), tz) if d_ate else None
+    # Busca com folga e filtra aqui; com filtros, a folga é maior.
+    folga = 20 if (acao or alvo or ator) else 1
+    eventos = storage.list_audit(inicio=inicio, fim=fim, limit=min(limit * folga, 50_000))
+    alvo_q, ator_q = alvo.strip().lower(), ator.strip().lower()
+    filtrados = [
+        e
+        for e in eventos
+        if (not acao or e.acao == acao)
+        and (not alvo_q or alvo_q in e.alvo.lower())
+        and (not ator_q or ator_q in e.ator_nome.lower())
+    ][:limit]
+    filtros = {"acao": acao, "alvo": alvo, "ator": ator, "de": de, "ate": ate}
+    return filtrados, {k: v[:100] for k, v in filtros.items()}
+
+
+@router.get("/auditoria", response_class=HTMLResponse)
+def audit_log(
+    request: Request,
+    acao: str = "",
+    alvo: str = "",
+    ator: str = "",
+    de: str = "",
+    ate: str = "",
+    settings: Settings = Depends(get_app_settings),
+    storage: StorageBackend = Depends(get_storage),
+    principal: Principal = AdminDep,
+) -> HTMLResponse:
+    from app.core.audit import ACOES
+
+    eventos, filtros = _audit_query(
+        storage, settings, acao if acao in ACOES else "", alvo, ator, de, ate, AUDIT_LIMIT
+    )
+    return _render(
+        request,
+        "auditoria.html",
+        settings,
+        principal,
+        eventos=eventos,
+        filtros=filtros,
+        acoes=ACOES,
+        limite=AUDIT_LIMIT,
+        aba="auditoria",
+    )
+
+
+def _csv_cell(v: str) -> str:
+    """Evita injeção de fórmulas ao abrir no Excel."""
+    v = str(v)
+    return "'" + v if v[:1] in ("=", "+", "-", "@", "\t", "\r") else v
+
+
+@router.get("/auditoria.csv")
+def audit_export(
+    acao: str = "",
+    alvo: str = "",
+    ator: str = "",
+    de: str = "",
+    ate: str = "",
+    settings: Settings = Depends(get_app_settings),
+    storage: StorageBackend = Depends(get_storage),
+    principal: Principal = AdminDep,
+) -> Response:
+    import csv
+    import io
+    from zoneinfo import ZoneInfo
+
+    from app.core.audit import ACOES, AuditEvent
+
+    eventos, filtros = _audit_query(
+        storage, settings, acao if acao in ACOES else "", alvo, ator, de, ate, AUDIT_EXPORT_LIMIT
+    )
+    tz = ZoneInfo(settings.timezone)
+    buf = io.StringIO()
+    w = csv.writer(buf, delimiter=";")
+    w.writerow(["data_hora", "acao", "descricao", "alvo", "tipo", "ator", "ator_id", "detalhe"])
+    for e in eventos:
+        w.writerow(
+            [
+                e.em.astimezone(tz).strftime("%d/%m/%Y %H:%M:%S"),
+                e.acao,
+                e.acao_label,
+                e.alvo,
+                e.tipo,
+                _csv_cell(e.ator_nome),
+                e.ator_oid,
+                _csv_cell(e.detalhe),
+            ]
+        )
+    storage.append_audit(
+        AuditEvent(
+            ator_oid=principal.object_id,
+            ator_nome=principal.name or principal.username,
+            acao="auditoria.exportada",
+            # só quais filtros foram usados (o texto digitado pode conter nomes)
+            detalhe=f"{len(eventos)} evento(s)"
+            + "".join(f"; filtro {k}" for k, v in filtros.items() if v),
+        )
+    )
+    nome = f"auditoria-{datetime.now(tz):%Y%m%d-%H%M}.csv"
+    return Response(
+        content="\ufeff" + buf.getvalue(),  # BOM: acentos corretos no Excel
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="{nome}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+# ------------------------------------------------------------------ privacidade
+@router.get("/privacidade", response_class=HTMLResponse)
+def privacy_admin(
+    request: Request,
+    ok: str = "",
+    settings: Settings = Depends(get_app_settings),
+    storage: StorageBackend = Depends(get_storage),
+    principal: Principal = AdminDep,
+) -> HTMLResponse:
+    from app.services.privacy import eligible
+
+    return _render(
+        request,
+        "admin-privacidade.html",
+        settings,
+        principal,
+        elegiveis=eligible(storage.list_requests(limit=100_000), settings),
+        ok=ok[:20],
+        aba="privacidade",
+    )
+
+
+@router.post("/privacidade/anonimizar", dependencies=[Depends(verify_csrf)])
+def privacy_run(
+    settings: Settings = Depends(get_app_settings),
+    storage: StorageBackend = Depends(get_storage),
+    principal: Principal = AdminDep,
+) -> Response:
+    from app.services.privacy import run_retention
+    from app.services.requests_flow import pessoa
+
+    feitos = run_retention(storage, settings, ator=pessoa(principal))
+    logger.info("LGPD: %s anonimizada(s) por %s", len(feitos), principal.object_id)
+    return RedirectResponse(f"/admin/privacidade?ok={len(feitos)}", status_code=303)

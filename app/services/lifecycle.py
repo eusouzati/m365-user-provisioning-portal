@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
 from app.config import Settings
+from app.core.audit import AuditEvent, current_actor
 from app.core.profiles import eligible_license_groups, eligible_skus
 from app.core.workflow import (
     LIFECYCLE_KEYS,
@@ -37,6 +38,7 @@ from app.graph.writer import GraphWriter
 from app.services.offboarding import EXECUTABLE as OFFBOARDING_EXECUTABLE
 from app.services.offboarding import OffboardingService, is_due
 from app.services.onboarding import today_in
+from app.services.privacy import run_retention
 from app.services.provisioning import ensure_lifecycle_steps
 from app.storage import StorageBackend
 from app.storage.errors import ConcurrencyError
@@ -60,7 +62,15 @@ class LifecycleReport:
     ativadas: list[str] = field(default_factory=list)
     desligadas: list[str] = field(default_factory=list)
     falhas: list[str] = field(default_factory=list)
+    anonimizadas: list[str] = field(default_factory=list)
     ignoradas_concorrencia: list[str] = field(default_factory=list)
+
+    def resumo(self) -> str:
+        return (
+            f"{self.analisadas} analisada(s), {len(self.licenciadas)} licenciada(s), "
+            f"{len(self.ativadas)} ativada(s), {len(self.desligadas)} desligamento(s), "
+            f"{len(self.falhas)} falha(s), {len(self.anonimizadas)} anonimizada(s)"
+        )
 
     def as_dict(self) -> dict:
         return {
@@ -71,6 +81,7 @@ class LifecycleReport:
             "ativadas": self.ativadas,
             "desligadas": self.desligadas,
             "falhas": self.falhas,
+            "anonimizadas": self.anonimizadas,
             "ignoradasConcorrencia": self.ignoradas_concorrencia,
         }
 
@@ -95,11 +106,37 @@ class LifecycleService:
         self.storage = storage
 
     def run(self, today: date | None = None, now: datetime | None = None) -> LifecycleReport:
-        hoje = today or today_in(self.settings)
         report = LifecycleReport(executado_em=datetime.now(UTC), dry_run=self.writer.dry_run)
+        # LGPD: vale também em DRY_RUN (são dados do portal, não do Microsoft 365)
+        try:
+            report.anonimizadas = run_retention(self.storage, self.settings, now)
+        except Exception:  # a retenção nunca impede licença, ativação e desligamentos
+            logger.exception("LGPD: falha na retenção; o ciclo de vida continua")
+        self._run(report, today or today_in(self.settings), now)
+        self._save_state(report)
+        return report
+
+    def _save_state(self, report: LifecycleReport) -> None:
+        """Última execução (painel) e evento de auditoria quando algo aconteceu."""
+        try:
+            self.storage.set_state("ultimo_ciclo", report.as_dict())
+            if report.analisadas or report.anonimizadas or report.falhas:
+                oid, nome = current_actor()
+                self.storage.append_audit(
+                    AuditEvent(
+                        ator_oid=oid,
+                        ator_nome=nome,
+                        acao="ciclo.executado",
+                        detalhe=report.resumo(),
+                    )
+                )
+        except Exception:  # registro auxiliar: nunca derruba o ciclo
+            logger.exception("Falha ao registrar a execução do ciclo de vida")
+
+    def _run(self, report: LifecycleReport, hoje: date, now: datetime | None) -> None:
         if self.writer.dry_run:
             logger.info("Ciclo de vida em DRY_RUN: nada será alterado")
-            return report
+            return
 
         todas = self.storage.list_requests(limit=1000)
         desligados = offboarded_ids(todas)  # nunca ativar/licenciar conta em desligamento
@@ -150,7 +187,7 @@ class LifecycleService:
             len(report.desligadas),
             len(report.falhas),
         )
-        return report
+        return
 
     # --------------------------------------------------------------------
     def _process(self, req: ProvisioningRequest, hoje: date, report: LifecycleReport) -> None:

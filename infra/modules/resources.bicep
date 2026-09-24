@@ -30,6 +30,19 @@ param dryRun bool = true
 @minValue(1)
 param provisioningDailyLimit int = 20
 
+@description('Hora local (0-23) do último dia de trabalho em que a conta é bloqueada.')
+@minValue(0)
+@maxValue(23)
+param offboardingBlockHour int = 18
+
+@description('LGPD: dias após a conclusão para anonimizar os dados pessoais das solicitações (0 = desativado).')
+@minValue(0)
+@maxValue(3650)
+param lgpdRetentionDays int = 0
+
+@description('Contato do encarregado de dados (DPO) exibido no aviso de privacidade.')
+param privacyContact string = ''
+
 @description('Cria o agendador (Logic App) que executa o ciclo de vida de hora em hora.')
 param enableScheduler bool = true
 
@@ -164,6 +177,9 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
         { name: 'ENVIRONMENT', value: environment }
         { name: 'DRY_RUN', value: dryRun ? 'true' : 'false' }
         { name: 'PROVISIONING_DAILY_LIMIT', value: string(provisioningDailyLimit) }
+        { name: 'OFFBOARDING_BLOCK_HOUR', value: string(offboardingBlockHour) }
+        { name: 'LGPD_RETENTION_DAYS', value: string(lgpdRetentionDays) }
+        { name: 'PRIVACY_CONTACT', value: privacyContact }
         { name: 'STORAGE_BACKEND', value: 'azure_table' }
         { name: 'AZURE_STORAGE_TABLE_ENDPOINT', value: storage.properties.primaryEndpoints.table }
         { name: 'AZURE_CLIENT_ID', value: identity.properties.clientId }

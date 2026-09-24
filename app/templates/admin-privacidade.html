@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Privacidade (LGPD) · {{ settings.app_name }}{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+<h1>Privacidade (LGPD)</h1>
+{% if ok %}<div class="alerta alerta-ok">{{ ok }} solicitação(ões) anonimizada(s).</div>{% endif %}
+
+<section class="painel">
+  <h2>Retenção</h2>
+  <dl class="grade">
+    <dt>Prazo de retenção</dt><dd>{% if settings.lgpd_retention_days %}{{ settings.lgpd_retention_days }} dias após a conclusão (<code>LGPD_RETENTION_DAYS</code>){% else %}<strong>Desativado</strong> — defina <code>LGPD_RETENTION_DAYS</code> (ex.: 730) nas configurações do App Service{% endif %}</dd>
+    <dt>Encarregado (DPO)</dt><dd>{{ settings.privacy_contact or "Não informado (PRIVACY_CONTACT)" }}</dd>
+    <dt>Execução</dt><dd>Automática, junto com o agendador (de hora em hora), quando o prazo está definido.</dd>
+  </dl>
+  <p class="ajuda">Ao anonimizar, a solicitação perde nome, login, e-mail, matrícula, cargo, gestor, comentários e detalhes das etapas. Ficam número, tipo, status, datas, o Object ID da conta e quem pediu e aprovou. A conta no Microsoft 365 <strong>não</strong> é alterada. A anonimização não pode ser desfeita.</p>
+</section>
+
+<section class="painel">
+  <h2>Prontas para anonimizar ({{ elegiveis|length }})</h2>
+  {% set itens = elegiveis[:50] %}{% set mostrar_solicitante = true %}{% set vazio = "Nenhuma solicitação passou do prazo." %}
+  {% include "_lista_solicitacoes.html" %}
+  {% if elegiveis %}
+  <form method="post" action="/admin/privacidade/anonimizar" data-envio-unico class="espaco">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button class="botao perigo" type="submit">Anonimizar agora ({{ elegiveis|length }})</button>
+  </form>
+  {% endif %}
+</section>
+<p><a href="/privacidade">Ver o aviso de privacidade exibido aos usuários →</a></p>
+{% endblock %}

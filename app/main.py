@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app import __version__
 from app.config import Settings, get_settings
+from app.core.audit import AuditContextMiddleware
 from app.csrf import CsrfCookieMiddleware
 from app.errors import register_error_handlers
 from app.graph import build_graph, build_writer
@@ -53,6 +54,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.writer = build_writer(settings)  # DryRunWriter enquanto DRY_RUN=true
 
     app.add_middleware(CsrfCookieMiddleware)
+    app.add_middleware(AuditContextMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     app.include_router(health.router)

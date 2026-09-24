@@ -8,6 +8,7 @@ from app.config import Settings
 from app.core.workflow import FINAL_STATUSES
 from app.dependencies import get_app_settings, get_storage
 from app.services.access import team_requests
+from app.services.onboarding import today_in
 from app.storage import StorageBackend
 from app.templating import templates
 
@@ -48,6 +49,19 @@ def home(
         principal,
         pendentes=pendentes,
         minhas=minhas,
-        equipe_ativa=sum(1 for r in equipe if r.status == "ativa"),
+        # Só quem começa HOJE (admissão do dia), não toda a equipe ativa
+        equipe_ativa=sum(
+            1 for r in equipe if r.status == "ativa" and r.data_admissao == today_in(settings)
+        ),
         equipe_total=len(equipe),
     )
+
+
+@router.get("/privacidade", response_class=HTMLResponse)
+def privacy_notice(
+    request: Request,
+    settings: Settings = Depends(get_app_settings),
+    principal: Principal = Depends(get_current_principal),
+) -> HTMLResponse:
+    """Aviso de privacidade (LGPD) para quem usa o portal."""
+    return _page(request, "privacidade.html", settings, principal)

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 import sqlite3
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
+from app.core.audit import AuditEvent
 from app.core.profiles import OnboardingProfile
 from app.core.workflow import ProvisioningRequest, format_request_id
 from app.storage.errors import ConcurrencyError, DuplicateRequestError
@@ -22,7 +24,15 @@ CREATE TABLE IF NOT EXISTS solicitacoes (
 );
 CREATE INDEX IF NOT EXISTS ix_solic_status ON solicitacoes(status);
 CREATE INDEX IF NOT EXISTS ix_solic_solicitante ON solicitacoes(solicitante);
+CREATE TABLE IF NOT EXISTS auditoria (id TEXT PRIMARY KEY, em TEXT NOT NULL, dados TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS ix_auditoria_em ON auditoria(em);
+CREATE TABLE IF NOT EXISTS estado (chave TEXT PRIMARY KEY, dados TEXT NOT NULL);
 """
+
+
+def _ts(dt: datetime) -> str:
+    """UTC em formato fixo: comparável como texto (filtros de período)."""
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 class SqliteStorage:
@@ -152,3 +162,45 @@ class SqliteStorage:
         with self._connect() as conn:
             rows = conn.execute(sql, args).fetchall()
         return [ProvisioningRequest.model_validate_json(r[0]) for r in rows]
+
+    # ------------------------------------------------------------ auditoria
+    def append_audit(self, event: AuditEvent) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO auditoria (id, em, dados) VALUES (?, ?, ?)",
+                (event.id, _ts(event.em), event.model_dump_json()),
+            )
+
+    def list_audit(
+        self,
+        *,
+        inicio: datetime | None = None,
+        fim: datetime | None = None,
+        limit: int = 500,
+    ) -> list[AuditEvent]:
+        sql, args = "SELECT dados FROM auditoria WHERE 1=1", []
+        if inicio:
+            sql += " AND em >= ?"
+            args.append(_ts(inicio))
+        if fim:
+            sql += " AND em < ?"
+            args.append(_ts(fim))
+        sql += " ORDER BY em DESC, id DESC LIMIT ?"
+        args.append(limit)
+        with self._connect() as conn:
+            rows = conn.execute(sql, args).fetchall()
+        return [AuditEvent.model_validate_json(r[0]) for r in rows]
+
+    # --------------------------------------------------------------- estado
+    def get_state(self, key: str) -> dict | None:
+        with self._connect() as conn:
+            row = conn.execute("SELECT dados FROM estado WHERE chave = ?", (key,)).fetchone()
+        return json.loads(row[0]) if row else None
+
+    def set_state(self, key: str, value: dict) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT INTO estado (chave, dados) VALUES (?, ?) "
+                "ON CONFLICT(chave) DO UPDATE SET dados = excluded.dados",
+                (key, json.dumps(value, default=str)),
+            )

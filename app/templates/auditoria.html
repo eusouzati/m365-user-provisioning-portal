@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Auditoria · {{ settings.app_name }}{% endblock %}
+{% block content %}
+{% include "_admin_nav.html" %}
+<div class="titulo-linha">
+  <h1>Auditoria</h1>
+  <a class="botao secundario" href="/admin/auditoria.csv?acao={{ filtros.acao|urlencode }}&alvo={{ filtros.alvo|urlencode }}&ator={{ filtros.ator|urlencode }}&de={{ filtros.de|urlencode }}&ate={{ filtros.ate|urlencode }}">Exportar CSV</a>
+</div>
+<p class="ajuda">Registro somente de acréscimo: quem fez o quê e quando. Não contém senhas, códigos de acesso nem dados pessoais do colaborador (o alvo é o número da solicitação).</p>
+
+<form class="formulario filtros" method="get" action="/admin/auditoria">
+  <div class="linha tres">
+    <label>Ação
+      <select name="acao">
+        <option value="">Todas</option>
+        {% for k, v in acoes.items() %}<option value="{{ k }}" {% if filtros.acao == k %}selected{% endif %}>{{ v }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Solicitação / alvo <input name="alvo" value="{{ filtros.alvo }}" maxlength="100" placeholder="REQ-AAAAMMDD-NNNN"></label>
+    <label>Quem <input name="ator" value="{{ filtros.ator }}" maxlength="100"></label>
+  </div>
+  <div class="linha tres">
+    <label>De <input type="date" name="de" value="{{ filtros.de }}"></label>
+    <label>Até <input type="date" name="ate" value="{{ filtros.ate }}"></label>
+    <div class="acoes alinhar-base"><button class="botao" type="submit">Filtrar</button><a class="botao secundario" href="/admin/auditoria">Limpar</a></div>
+  </div>
+</form>
+
+{% include "_lista_auditoria.html" %}
+{% if eventos|length >= limite %}<p class="ajuda">Mostrando os {{ limite }} eventos mais recentes. Use os filtros ou exporte o CSV para ver mais.</p>{% endif %}
+{% endblock %}

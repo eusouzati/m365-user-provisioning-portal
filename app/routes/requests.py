@@ -14,7 +14,7 @@ from app.auth import Principal, Roles, require_roles
 from app.config import Settings
 from app.core.profiles import TIPOS_COLABORADOR
 from app.core.requests import NewHireForm, friendly_errors
-from app.core.workflow import REQUEST_ID_RE, WorkflowError, can_cancel, cancel
+from app.core.workflow import REQUEST_ID_RE, WorkflowError, can_cancel, cancel, offboarded_ids
 from app.csrf import verify_csrf
 from app.dependencies import (
     get_app_settings,
@@ -151,6 +151,7 @@ def index(
         settings,
         principal,
         itens=itens,
+        desligados=offboarded_ids(storage.list_requests(limit=1000)),
         titulo="Minhas solicitações",
         ok=ok[:20],
     )

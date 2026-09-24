@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from app.auth import Principal, Roles, require_roles
 from app.config import Settings
 from app.core.requests import NewHireForm
-from app.core.workflow import WorkflowError, approve, reject
+from app.core.workflow import WorkflowError, approve, offboarded_ids, reject
 from app.csrf import verify_csrf
 from app.dependencies import (
     get_app_settings,
@@ -63,6 +63,7 @@ def queue(
             "principal": principal,
             "pendentes": pendentes,
             "recentes": recentes,
+            "desligados": offboarded_ids(storage.list_requests(limit=1000)),
             "ok": ok[:20],
         },
     )

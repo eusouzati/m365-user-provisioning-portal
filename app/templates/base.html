@@ -26,7 +26,7 @@
     <a href="/">Início</a>
     {% if principal.has_any_role(Roles.SOLICITANTE) %}<a href="/solicitacoes">Solicitações</a>{% endif %}
     {% if principal.has_any_role(Roles.APROVADOR) %}<a href="/aprovacoes">Aprovações</a>{% endif %}
-    {% if principal.has_any_role(Roles.ADMINISTRADOR) %}<a href="/admin">Administração</a>{% endif %}
+    {% if principal.has_any_role(Roles.ADMINISTRADOR) %}<a href="/admin/painel">Administração</a>{% endif %}
     <a href="/equipe">Minha equipe</a>
   </nav>
   {% endif %}
@@ -34,6 +34,6 @@
     {% block content %}{% endblock %}
   </main>
   <script src="{{ url_for('static', path='js/envio.js') }}" defer></script>
-  <footer class="rodape">v{{ version }} · Software livre sob licença MIT</footer>
+  <footer class="rodape">v{{ version }} · Software livre sob licença MIT{% if principal %} · <a href="/privacidade">Privacidade</a>{% endif %}</footer>
 </body>
 </html>
