@@ -183,6 +183,8 @@ class AzureTableStorage:
             filtro += f" and status eq '{_odata(status)}'"
         if solicitante_oid:
             filtro += f" and solicitante eq '{_odata(solicitante_oid.lower())}'"
-        rows = self._table(REQUESTS_TABLE).query_entities(filtro, select=["dados", "criado_em"])
-        itens = sorted(rows, key=lambda r: r["criado_em"], reverse=True)[:limit]
+        rows = self._table(REQUESTS_TABLE).query_entities(
+            filtro, select=["dados", "criado_em", "RowKey"]
+        )
+        itens = sorted(rows, key=lambda r: (r["criado_em"], r["RowKey"]), reverse=True)[:limit]
         return [ProvisioningRequest.model_validate_json(r["dados"]) for r in itens]

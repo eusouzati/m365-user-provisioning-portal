@@ -147,7 +147,7 @@ class SqliteStorage:
         if solicitante_oid:
             sql += " AND solicitante = ?"
             args.append(solicitante_oid.lower())
-        sql += " ORDER BY criado_em DESC LIMIT ?"
+        sql += " ORDER BY criado_em DESC, id DESC LIMIT ?"
         args.append(limit)
         with self._connect() as conn:
             rows = conn.execute(sql, args).fetchall()
