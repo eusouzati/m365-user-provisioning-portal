@@ -17,6 +17,8 @@
     GroupMember.ReadWrite.All         adicionar aos grupos de acesso do perfil
 
   Nível "ciclo-de-vida" (Sprint 7) — inclui os anteriores e adiciona:
+    User.EnableDisableAccount.All           ativar a conta no D0 (o Graph exige esta permissão
+                                            para alterar accountEnabled)
     UserAuthenticationMethod.ReadWrite.All  gerar o Temporary Access Pass (acesso inicial)
     LicenseAssignment.ReadWrite.All         somente se LICENSE_MODE=direct no .env
 
@@ -55,7 +57,7 @@ $niveis = [ordered]@{
         'User-LifeCycleInfo.ReadWrite.All'
         'GroupMember.ReadWrite.All'
     )
-    'ciclo-de-vida' = @('UserAuthenticationMethod.ReadWrite.All')
+    'ciclo-de-vida' = @('User.EnableDisableAccount.All', 'UserAuthenticationMethod.ReadWrite.All')
 }
 # Cada nível inclui os anteriores
 $ordem = @('leitura', 'criacao', 'ciclo-de-vida')

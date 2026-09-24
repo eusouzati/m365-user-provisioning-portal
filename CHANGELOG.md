@@ -4,6 +4,10 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Não lançado]
 
+### Corrigido
+- Ativação no D0 falhava com 403: o nível `ciclo-de-vida` agora concede `User.EnableDisableAccount.All`.
+- Listagem de solicitações com ordem estável quando duas têm o mesmo horário de criação.
+
 ### Adicionado
 - Sprint 7: motor de ciclo de vida nativo (licença no D-1 por grupo ou SKU direto, com verificação de unidades; ativação no D0; estados `licenciada`/`ativa`; novas tentativas automáticas), agendador Logic App de hora em hora chamando `/interno/ciclo-de-vida` com Managed Identity e App Role de aplicação `Provisionamento.Agendador`, botão "Executar ciclo de vida agora", área **Minha equipe** onde o gestor gera o Temporary Access Pass (uso único, validade limitada pela política, exibido uma vez e nunca armazenado), nível de permissão `ciclo-de-vida`.
 - Sprint 6: `UserProvisioningService` cria a conta aprovada no Entra ID (desativada, sem licença, senha aleatória descartada, `forceChangePasswordNextSignIn`), define gestor, matrícula, tipo, data de admissão e grupos de acesso (revalidados no tenant); etapas registradas individualmente, falha parcial com reprocessamento pelo Administrador (idempotente, reaproveita usuário de tentativa anterior, nunca exclui); `DRY_RUN` simula tudo; limite diário `PROVISIONING_DAILY_LIMIT`; escrita isolada em `MsGraphWriter` (sem repetição de POST ambíguo); nível de permissão `criacao` no `Set-GraphPermissions.ps1`; busca de gestor com mensagens de erro claras.

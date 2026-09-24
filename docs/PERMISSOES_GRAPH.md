@@ -43,10 +43,11 @@ Proteções adicionais no código: escrita só existe com `DRY_RUN=false` (`MsGr
 
 | Permissão | Uso no portal |
 |---|---|
+| `User.EnableDisableAccount.All` | Ativar a conta no D0 — o Graph recusa (403) alterar `accountEnabled` só com `User.ReadWrite.All` |
 | `UserAuthenticationMethod.ReadWrite.All` | Gerar o Temporary Access Pass do novo colaborador (e remover o anterior) |
 | `LicenseAssignment.ReadWrite.All` | **Somente** com `LICENSE_MODE=direct` (atribuir SKU diretamente) |
 
-Com `LICENSE_MODE=group` (padrão) a licença é aplicada pela entrada no grupo de licença, usando `GroupMember.ReadWrite.All` (nível `criacao`). A ativação da conta usa `User.ReadWrite.All`.
+Com `LICENSE_MODE=group` (padrão) a licença é aplicada pela entrada no grupo de licença, usando `GroupMember.ReadWrite.All` (nível `criacao`).
 
 ## Próximos níveis (planejados)
 
