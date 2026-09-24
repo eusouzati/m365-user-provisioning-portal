@@ -1,0 +1,99 @@
+name: Deploy
+
+# Publica a aplicação no Azure App Service sem nenhum segredo no GitHub:
+# o login no Azure usa OIDC (credencial federada da identidade de deploy).
+#   - push na main: CI → deploy automático no ambiente "lab"
+#   - manual (Actions → Deploy → Run workflow): "lab" ou "production"
+#     (production exige aprovação no ambiente do GitHub)
+# Configure uma vez com: ./scripts/New-GitHubDeployIdentity.ps1 -Environment lab
+# Enquanto a variável DEPLOY_<AMBIENTE>_ENABLED não existir, o deploy é pulado
+# (útil em forks e para quem ainda não configurou).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: Ambiente de destino
+        type: choice
+        options: [lab, production]
+        default: lab
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: ci
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'push' && vars.DEPLOY_LAB_ENABLED == 'true') ||
+       (github.event_name == 'workflow_dispatch' && inputs.ambiente == 'lab' && vars.DEPLOY_LAB_ENABLED == 'true') ||
+       (github.event_name == 'workflow_dispatch' && inputs.ambiente == 'production' && vars.DEPLOY_PRODUCTION_ENABLED == 'true'))
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.ambiente || 'lab' }}
+      url: ${{ steps.publicar.outputs.url }}
+    concurrency:
+      group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.ambiente || 'lab' }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write  # token OIDC para o login no Azure (sem segredo)
+    env:
+      RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+      WEBAPP: ${{ vars.AZURE_WEBAPP_NAME }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Empacotar
+        run: |
+          zip -rq app.zip app requirements.txt -x '*/__pycache__/*' '*.pyc'
+          ls -lh app.zip
+
+      - name: Login no Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Publicar
+        id: publicar
+        run: |
+          set -euo pipefail
+          url="https://$(az webapp show -g "$RESOURCE_GROUP" -n "$WEBAPP" --query defaultHostName -o tsv)"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          # No plano F1 o serviço de publicação às vezes responde 502 logo após reinícios:
+          # uma nova tentativa depois de 60 s resolve.
+          for tentativa in 1 2; do
+            if az webapp deploy -g "$RESOURCE_GROUP" -n "$WEBAPP" --src-path app.zip --type zip --track-status false; then
+              exit 0
+            fi
+            echo "::warning::Falha na tentativa $tentativa de publicação; tentando de novo em 60 s"
+            sleep 60
+          done
+          exit 1
+
+      - name: Conferir /health
+        env:
+          URL: ${{ steps.publicar.outputs.url }}
+        run: |
+          versao="$(python3 -c "import re;print(re.search(r'__version__ = \"(.+)\"', open('app/__init__.py').read()).group(1))")"
+          # Só conta quando a versão NOVA responde (o contêiner antigo ainda atende por alguns segundos)
+          for i in $(seq 1 40); do
+            if curl -fsS --max-time 30 "$URL/health" | grep -q "\"version\":\"$versao\""; then
+              echo "OK: $URL/health (v$versao)"
+              curl -fsS --max-time 30 "$URL/health/ready" || echo "::warning::/health/ready ainda não respondeu"
+              echo "### Publicado v$versao em $URL" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            echo "  ...aguardando a v$versao responder ($i/40)"
+            sleep 15
+          done
+          echo "::error::A aplicação não respondeu em 10 minutos. Veja: az webapp log tail -g $RESOURCE_GROUP -n $WEBAPP"
+          exit 1

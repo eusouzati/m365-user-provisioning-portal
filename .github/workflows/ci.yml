@@ -1,9 +1,11 @@
 name: CI
 
+# Na main, o CI roda dentro do workflow "Deploy" (que só publica se o CI passar).
 on:
   push:
-    branches: [main]
+    branches-ignore: [main]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read

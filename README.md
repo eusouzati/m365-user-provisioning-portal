@@ -4,7 +4,7 @@ Portal **open source** (licença MIT) para automatizar a entrada e a saída de c
 
 Cada organização implanta o portal **no próprio tenant e na própria assinatura Azure**. Nenhum dado de tenant fica neste repositório.
 
-> **Status:** em desenvolvimento (v0.9 — Sprint 9: trilha de auditoria, painel do Administrador e LGPD — retenção com anonimização e aviso de privacidade). Admissão e desligamento completos.
+> **Status:** em desenvolvimento (v0.10 — Sprint 10: CI/CD com GitHub Actions e OIDC — deploy automático no lab, produção com aprovação, nenhum segredo no GitHub). Admissão, desligamento, auditoria e LGPD completos.
 
 ## Como funciona
 

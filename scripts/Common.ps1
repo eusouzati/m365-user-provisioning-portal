@@ -33,7 +33,10 @@ function Assert-Command {
 function Assert-AzureContext {
     param([Parameter(Mandatory)] [string] $TenantId, [Parameter(Mandatory)] [string] $SubscriptionId)
     Assert-Command az 'Instale o Azure CLI: https://aka.ms/installazurecli'
-    $acct = az account show -o json 2>$null | ConvertFrom-Json
+    # Windows PowerShell 5.1: stderr redirecionado com ErrorAction=Stop viraria exceção
+    $old = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try { $acct = az account show -o json 2>$null | ConvertFrom-Json } finally { $ErrorActionPreference = $old }
     if (-not $acct) { throw "Sem sessão no Azure CLI. Rode: az login --tenant $TenantId" }
     if ($acct.tenantId -ne $TenantId) { throw "Tenant ativo ($($acct.tenantId)) difere do .env ($TenantId). Abortando." }
     if ($acct.id -ne $SubscriptionId) {

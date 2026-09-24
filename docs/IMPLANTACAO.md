@@ -96,7 +96,16 @@ PRIVACY_CONTACT=dpo@suaempresa.com.br
 
 Nada muda no Microsoft 365 nem nas permissões. Detalhes em [AUDITORIA_E_LGPD.md](AUDITORIA_E_LGPD.md).
 
-## 9. Solução de problemas
+## 9. Deploy automático (GitHub Actions)
+
+```powershell
+gh auth login
+pwsh ./scripts/New-GitHubDeployIdentity.ps1 -Environment lab   # identidade de deploy sem segredo (SIM)
+```
+
+A partir daí, todo push na `main` passa pelo CI e publica no lab. Detalhes em [CI_CD.md](CI_CD.md).
+
+## 10. Solução de problemas
 
 - `/health/ready` com 503 logo após criar a infraestrutura: as permissões RBAC da Managed Identity podem levar até ~10 minutos para propagar.
 - Logs: `az webapp log tail -g rg-<prefixo>-lab -n <webAppName>`.

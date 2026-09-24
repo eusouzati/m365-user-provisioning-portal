@@ -9,7 +9,9 @@ from app.main import create_app
 def test_health_retorna_healthy(client):
     resp = client.get("/health")
     assert resp.status_code == 200
-    assert resp.json() == {"status": "healthy"}
+    from app import __version__
+
+    assert resp.json() == {"status": "healthy", "version": __version__}
 
 
 def test_ready_com_sqlite(client):

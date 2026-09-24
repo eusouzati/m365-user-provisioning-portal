@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
+from app import __version__
 from app.dependencies import get_storage
 from app.storage import StorageBackend
 
@@ -14,8 +15,8 @@ logger = logging.getLogger("m365up.health")
 
 @router.get("/health")
 def health() -> dict[str, str]:
-    """Liveness: a aplicação está no ar."""
-    return {"status": "healthy"}
+    """Liveness: a aplicação está no ar (e qual versão — o deploy confere)."""
+    return {"status": "healthy", "version": __version__}
 
 
 @router.get("/health/ready")
