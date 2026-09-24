@@ -30,6 +30,9 @@ param dryRun bool = true
 @minValue(1)
 param provisioningDailyLimit int = 20
 
+@description('Cria o agendador (Logic App) que executa o ciclo de vida de hora em hora.')
+param enableScheduler bool = true
+
 // Sufixo determinístico para nomes que precisam ser globais (Web App, Storage).
 var suffix = take(uniqueString(subscription().id, resourceGroup().id, prefix, environment), 5)
 var isFree = appServiceSku == 'F1'
@@ -222,6 +225,46 @@ resource authSettings 'Microsoft.Web/sites/config@2023-12-01' = if (authEnabled)
 }
 
 // Desabilita autenticação básica (FTP e SCM); o deploy usa o token do Entra ID.
+// Agendador do ciclo de vida (D-1 licença / D0 ativação): Logic App de consumo que chama
+// o portal de hora em hora com a Managed Identity (token para api://<client-id>).
+// O portal exige o App Role Provisionamento.Agendador, atribuído só a essa identidade.
+resource scheduler 'Microsoft.Logic/workflows@2019-05-01' = if (authEnabled && enableScheduler) {
+  name: 'logic-${prefix}-${environment}'
+  location: location
+  tags: tags
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: { '${identity.id}': {} }
+  }
+  properties: {
+    state: 'Enabled'
+    definition: {
+      '$schema': 'https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#'
+      contentVersion: '1.0.0.0'
+      triggers: {
+        de_hora_em_hora: {
+          type: 'Recurrence'
+          recurrence: { frequency: 'Hour', interval: 1 }
+        }
+      }
+      actions: {
+        executar_ciclo_de_vida: {
+          type: 'Http'
+          inputs: {
+            method: 'POST'
+            uri: 'https://${webApp.properties.defaultHostName}/interno/ciclo-de-vida'
+            authentication: {
+              type: 'ManagedServiceIdentity'
+              identity: identity.id
+              audience: 'api://${entraClientId}'
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 resource ftpPolicy 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2023-12-01' = {
   parent: webApp
   name: 'ftp'
@@ -235,6 +278,7 @@ resource scmPolicy 'Microsoft.Web/sites/basicPublishingCredentialsPolicies@2023-
 }
 
 output authEnabled bool = authEnabled
+output schedulerName string = (authEnabled && enableScheduler) ? scheduler.name : ''
 output webAppName string = webApp.name
 output webAppUrl string = 'https://${webApp.properties.defaultHostName}'
 output managedIdentityName string = identity.name

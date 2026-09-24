@@ -37,13 +37,16 @@ class Roles:
     SOLICITANTE = "Provisionamento.Solicitante"
     APROVADOR = "Provisionamento.Aprovador"
     ADMINISTRADOR = "Provisionamento.Administrador"
+    # Somente aplicações (Managed Identity do agendador); nunca atribuído a pessoas
+    AGENDADOR = "Provisionamento.Agendador"
 
-    ALL = frozenset({SOLICITANTE, APROVADOR, ADMINISTRADOR})
+    ALL = frozenset({SOLICITANTE, APROVADOR, ADMINISTRADOR, AGENDADOR})
 
     LABELS = {
         SOLICITANTE: "Solicitante (RH)",
         APROVADOR: "Aprovador",
         ADMINISTRADOR: "Administrador",
+        AGENDADOR: "Agendador (automático)",
     }
 
 
@@ -85,6 +88,10 @@ class Principal:
     @property
     def portal_roles(self) -> list[str]:
         return sorted(r for r in self.roles if r in Roles.ALL)
+
+    @property
+    def is_scheduler(self) -> bool:
+        return Roles.AGENDADOR in self.roles
 
     @property
     def role_labels(self) -> list[str]:
@@ -159,10 +166,11 @@ def _resolve_principal(request: Request, settings: Settings) -> Principal | None
     if principal.tenant_id.lower() != settings.azure_tenant_id.lower():
         logger.warning("Acesso negado: tenant externo %s", principal.tenant_id)
         raise ForbiddenError("tenant_nao_autorizado")
+    cid = settings.entra_app_client_id.lower()
     if (
-        settings.entra_app_client_id
+        cid
         and principal.audience
-        and principal.audience.lower() != settings.entra_app_client_id.lower()
+        and principal.audience.lower() not in (cid, f"api://{cid}")  # tokens v2 e v1
     ):
         logger.warning("Acesso negado: audiência inesperada")
         raise ForbiddenError("audiencia_invalida")

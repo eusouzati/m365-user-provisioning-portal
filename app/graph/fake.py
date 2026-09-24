@@ -159,6 +159,11 @@ class FakeGraphWriter:
         self.fail_groups: set[str] = set()
         self.fail_create = False
         self.calls: list[str] = []
+        self.licenses: dict[str, set[str]] = {}
+        self.enabled: set[str] = set()
+        self.taps: dict[str, str] = {}
+        self.fail_enable = False
+        self.fail_license = False
 
     def create_user(self, body: dict) -> str:
         self.calls.append("create_user")
@@ -191,3 +196,26 @@ class FakeGraphWriter:
             return False
         s.add(user_id)
         return True
+
+    # Sprint 7
+    def assign_license(self, user_id: str, sku_id: str) -> None:
+        self.calls.append(f"license:{sku_id}")
+        if self.fail_license:
+            from app.graph.errors import GraphError
+
+            raise GraphError("Graph 400 CountViolation: sem licenças disponíveis", 400)
+        self.licenses.setdefault(user_id, set()).add(sku_id)
+
+    def enable_user(self, user_id: str) -> None:
+        self.calls.append(f"enable:{user_id}")
+        if self.fail_enable:
+            from app.graph.errors import GraphError
+
+            raise GraphError("Graph 403 Authorization_RequestDenied: falha simulada", 403)
+        self.enabled.add(user_id)
+
+    def create_temporary_access_pass(self, user_id: str, lifetime_minutes: int) -> str:
+        self.calls.append(f"tap:{user_id}:{lifetime_minutes}")
+        code = f"TAP-{user_id}-{len(self.taps) + 1:03d}"
+        self.taps[user_id] = code  # um TAP por usuário: substitui o anterior
+        return code

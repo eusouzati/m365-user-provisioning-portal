@@ -62,10 +62,24 @@ Por padrão o portal roda com `DRY_RUN=true` (nada é alterado no Microsoft 365)
 
 Para voltar ao modo seguro, defina `DRY_RUN=true` e rode `Deploy-Infrastructure.ps1` novamente.
 
-## 6. Solução de problemas
+## 6. Ciclo de vida (licença D-1, ativação D0) e acesso inicial
+
+```powershell
+pwsh ./scripts/New-EntraApplication.ps1 -Environment lab      # papel Agendador + api://<client-id>
+pwsh ./scripts/Set-GraphPermissions.ps1 -Environment lab -Nivel ciclo-de-vida
+pwsh ./scripts/Deploy-Infrastructure.ps1 -Environment lab     # cria a Logic App (agendador)
+pwsh ./scripts/Deploy-Application.ps1 -Environment lab
+```
+
+Requisitos no tenant: política de **Temporary Access Pass** habilitada (Entra admin center → Métodos de autenticação) e, com `LICENSE_MODE=group`, um grupo de segurança com a licença atribuída, selecionado no perfil.
+
+Teste: em **Administração → Todas as solicitações**, clique em **Executar ciclo de vida agora**. No dia da admissão, o gestor acessa **Minha equipe** e gera o acesso inicial.
+
+## 7. Solução de problemas
 
 - `/health/ready` com 503 logo após criar a infraestrutura: as permissões RBAC da Managed Identity podem levar até ~10 minutos para propagar.
 - Logs: `az webapp log tail -g rg-<prefixo>-lab -n <webAppName>`.
+- Agendador sem efeito: veja o histórico de execuções da Logic App `logic-<prefixo>-<ambiente>` no portal do Azure. 401/403 → rode `New-EntraApplication.ps1` de novo (papel Agendador e `api://<client-id>`) e aguarde alguns minutos.
 - Nome de Storage/Web App já em uso: altere `RESOURCE_PREFIX`.
 - `SubscriptionIsOverQuotaForSku` (comum em assinaturas **Free Trial**): a assinatura tem cota 0 de App Service para o plano/região. Opções:
   1. testar outra região: `-Location eastus2` (o what-if não cria nada);

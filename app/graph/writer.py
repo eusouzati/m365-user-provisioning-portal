@@ -1,4 +1,5 @@
-"""Escrita no Microsoft Graph (Sprint 6): criar usuário, definir gestor, adicionar a grupos.
+"""Escrita no Microsoft Graph: criar usuário, gestor, grupos (Sprint 6); licença direta,
+ativação e Temporary Access Pass (Sprint 7).
 
 Separada do GraphService (leitura) para que a escrita só exista quando DRY_RUN=false.
 Nenhuma senha é registrada em log.
@@ -25,6 +26,12 @@ class GraphWriter(Protocol):
     def set_manager(self, user_id: str, manager_id: str) -> None: ...
     def add_group_member(self, group_id: str, user_id: str) -> bool:
         """True se adicionou; False se já era membro."""
+
+    # Sprint 7 — ciclo de vida
+    def assign_license(self, user_id: str, sku_id: str) -> None: ...
+    def enable_user(self, user_id: str) -> None: ...
+    def create_temporary_access_pass(self, user_id: str, lifetime_minutes: int) -> str:
+        """Gera um TAP de uso único e devolve o código. Remove TAP anterior, se houver."""
 
 
 class MsGraphWriter(MsGraphService):
@@ -70,6 +77,27 @@ class MsGraphWriter(MsGraphService):
                 return False
             raise
 
+    def assign_license(self, user_id: str, sku_id: str) -> None:
+        self._request(
+            "POST",
+            f"users/{user_id}/assignLicense",
+            json={"addLicenses": [{"skuId": sku_id, "disabledPlans": []}], "removeLicenses": []},
+        )
+
+    def enable_user(self, user_id: str) -> None:
+        self._request("PATCH", f"users/{user_id}", json={"accountEnabled": True})
+
+    def create_temporary_access_pass(self, user_id: str, lifetime_minutes: int) -> str:
+        base = f"users/{user_id}/authentication/temporaryAccessPassMethods"
+        # Só pode existir um TAP por usuário: remove o anterior antes de gerar outro.
+        for tap in self._get(base).get("value", []):
+            self._request("DELETE", f"{base}/{tap['id']}")
+        created = self._request(
+            "POST", base, json={"lifetimeInMinutes": lifetime_minutes, "isUsableOnce": True}
+        )
+        logger.info("TAP gerado para o usuário %s (código não registrado)", user_id)
+        return created["temporaryAccessPass"]
+
 
 class DryRunWriter:
     """Não altera nada: apenas registra o que seria feito."""
@@ -92,3 +120,13 @@ class DryRunWriter:
     def add_group_member(self, group_id: str, user_id: str) -> bool:
         self.planned.append(f"grupo {group_id}")
         return True
+
+    def assign_license(self, user_id: str, sku_id: str) -> None:
+        self.planned.append(f"licenca {sku_id}")
+
+    def enable_user(self, user_id: str) -> None:
+        self.planned.append(f"ativar {user_id}")
+
+    def create_temporary_access_pass(self, user_id: str, lifetime_minutes: int) -> str:
+        self.planned.append(f"tap {user_id}")
+        return ""

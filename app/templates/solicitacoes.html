@@ -5,7 +5,27 @@
 <div class="titulo-linha">
   <h1>{{ titulo }}</h1>
   {% if not aba %}<a class="botao" href="/solicitacoes/novo">Novo colaborador</a>{% endif %}
+  {% if aba %}
+  <form method="post" action="/admin/ciclo-de-vida" data-envio-unico>
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+    <button class="botao secundario" type="submit">Executar ciclo de vida agora</button>
+  </form>
+  {% endif %}
 </div>
+{% if ciclo %}
+<div class="alerta {% if ciclo.falhas %}alerta-aviso{% else %}alerta-ok{% endif %}">
+  {% if ciclo.dry_run %}
+  <strong>DRY_RUN ativo:</strong> o ciclo de vida não altera nada.
+  {% else %}
+  <strong>Ciclo de vida executado.</strong>
+  {{ ciclo.analisadas }} conta(s) analisada(s) ·
+  {{ ciclo.licenciadas|length }} licenciada(s){% if ciclo.licenciadas %} ({{ ciclo.licenciadas|join(", ") }}){% endif %} ·
+  {{ ciclo.ativadas|length }} ativada(s){% if ciclo.ativadas %} ({{ ciclo.ativadas|join(", ") }}){% endif %}
+  {% if ciclo.falhas %} · <strong>{{ ciclo.falhas|length }} com falha</strong> ({{ ciclo.falhas|join(", ") }}) — será tentado de novo na próxima execução.{% endif %}
+  {% endif %}
+</div>
+{% endif %}
+{% if aba %}<p class="ajuda">O ciclo de vida (licença no D-1 e ativação no D0) roda automaticamente de hora em hora.</p>{% endif %}
 {% set mostrar_solicitante = aba %}
 {% include "_lista_solicitacoes.html" %}
 {% endblock %}

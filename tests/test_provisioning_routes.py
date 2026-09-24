@@ -12,6 +12,13 @@ from tests.conftest import make_settings
 from tests.test_requests_routes import ADM, RH, TI, csrf, enviar
 
 
+def prov(req):
+    """Somente etapas do provisionamento inicial (sem as agendadas do ciclo de vida)."""
+    from app.core.workflow import LIFECYCLE_KEYS
+
+    return [e for e in req.etapas if e.chave not in LIFECYCLE_KEYS]
+
+
 def build(tmp_path, dry_run: bool) -> TestClient:
     s = make_settings(
         tmp_path,
@@ -53,7 +60,7 @@ def test_aprovacao_em_dry_run_simula(dry):
     assert aprovar(dry, rid).status_code == 303
     req = dry.app.state.storage.get_request(rid)
     assert req.status == "aprovada" and req.object_id == ""
-    assert {e.status for e in req.etapas} == {"simulado"}
+    assert {e.status for e in prov(req)} == {"simulado"}
     html = dry.get(f"/solicitacoes/{rid}?ok=aprovada", headers=TI).text
     assert "Simulada (DRY_RUN)" in html and "provisionamento foi apenas simulado" in html
 
@@ -105,7 +112,7 @@ def test_admin_executa_real_apos_simulacao(tmp_path):
     resp = c.post(f"/solicitacoes/{rid}/provisionar", data={"csrf_token": csrf(c)}, headers=ADM)
     assert resp.status_code == 303
     req = c.app.state.storage.get_request(rid)
-    assert req.status == "conta_criada" and {e.status for e in req.etapas} == {"ok"}
+    assert req.status == "conta_criada" and {e.status for e in prov(req)} == {"ok"}
 
 
 def test_nao_provisiona_pendente_nem_criada(real):

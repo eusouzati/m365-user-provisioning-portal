@@ -51,6 +51,9 @@ param dryRun bool = true
 @minValue(1)
 param provisioningDailyLimit int = 20
 
+@description('Cria o agendador (Logic App) que executa o ciclo de vida de hora em hora.')
+param enableScheduler bool = true
+
 @description('Tags adicionais.')
 param tags object = {}
 
@@ -82,6 +85,7 @@ module resources 'modules/resources.bicep' = {
     licenseMode: licenseMode
     dryRun: dryRun
     provisioningDailyLimit: provisioningDailyLimit
+    enableScheduler: enableScheduler
     tags: allTags
   }
 }
@@ -95,3 +99,4 @@ output managedIdentityPrincipalId string = resources.outputs.managedIdentityPrin
 output storageAccountName string = resources.outputs.storageAccountName
 output tableEndpoint string = resources.outputs.tableEndpoint
 output authEnabled bool = resources.outputs.authEnabled
+output schedulerName string = resources.outputs.schedulerName

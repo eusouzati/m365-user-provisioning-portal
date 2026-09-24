@@ -114,3 +114,17 @@ Aprovação ──► UserProvisioningService
 - Nunca exclui usuários. POST com resposta ambígua (erro de rede/5xx) não é repetido automaticamente.
 - A senha nunca é exibida, registrada ou armazenada; o acesso inicial será por TAP (Sprint 7).
 - O grupo de licença **não** é aplicado agora: fica para D-1 (Sprint 7).
+
+## Ciclo de vida e acesso inicial (Sprint 7)
+
+```text
+Logic App (de hora em hora) ── token MI para api://<client-id> ──► POST /interno/ciclo-de-vida
+                                                                   (App Role Provisionamento.Agendador)
+   D-1: entra no grupo de licença (ou SKU direto)     conta_criada ─► licenciada
+   D0 : accountEnabled=true                             licenciada  ─► ativa
+Gestor ─► Minha equipe ─► "Gerar acesso inicial" ─► TAP de uso único (exibido uma vez)
+```
+
+- Motor nativo, sem Entra ID Governance. Detalhes em [CICLO_DE_VIDA.md](CICLO_DE_VIDA.md).
+- O papel `Provisionamento.Agendador` só aceita aplicações (`allowedMemberTypes: Application`) e é atribuído apenas à Managed Identity; por isso o endpoint interno dispensa CSRF.
+- A ativação só ocorre depois que a licença (quando o perfil tiver) foi atribuída.

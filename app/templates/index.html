@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Olá, {{ principal.name }}</h1>
+{% if equipe_ativa %}<div class="alerta alerta-aviso"><a href="/equipe">{{ equipe_ativa }} novo(s) colaborador(es) da sua equipe começa(m) hoje: gere o acesso inicial.</a></div>{% endif %}
 
 {% if principal.portal_roles %}
 <p>Seus papéis neste portal:</p>
@@ -20,6 +21,8 @@
   <a class="cartao" href="/admin"><strong>Administração</strong><span>Perfis de onboarding, licenças e auditoria.</span></a>
   {% endif %}
 </div>
+{% elif equipe_total %}
+<div class="cartoes"><a class="cartao" href="/equipe"><strong>Minha equipe</strong><span>Novos colaboradores e acesso inicial.</span></a></div>
 {% else %}
 <div class="aviso">
   <p>Você está autenticado, mas ainda não possui papel neste portal.</p>

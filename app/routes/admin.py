@@ -23,9 +23,11 @@ from app.core.profiles import (
 from app.core.skus import friendly_sku_name
 from app.core.workflow import STATUS_LABELS
 from app.csrf import verify_csrf
-from app.dependencies import get_app_settings, get_directory, get_storage
+from app.dependencies import get_app_settings, get_directory, get_storage, get_writer
 from app.graph.directory import DirectoryCache
 from app.graph.errors import GraphError, GraphPermissionError
+from app.graph.writer import GraphWriter
+from app.services.lifecycle import LifecycleService
 from app.storage import StorageBackend
 from app.templating import templates
 
@@ -144,6 +146,32 @@ def all_requests(
         itens=itens,
         titulo="Todas as solicitações",
         aba="solicitacoes",
+    )
+
+
+@router.post("/ciclo-de-vida", dependencies=[Depends(verify_csrf)])
+def run_lifecycle_now(
+    request: Request,
+    settings: Settings = Depends(get_app_settings),
+    storage: StorageBackend = Depends(get_storage),
+    directory: DirectoryCache = Depends(get_directory),
+    writer: GraphWriter = Depends(get_writer),
+    principal: Principal = AdminDep,
+) -> HTMLResponse:
+    """Executa agora o motor de ciclo de vida (o mesmo que o agendador chama de hora em hora)."""
+    logger.info("Ciclo de vida executado manualmente por %s", principal.object_id)
+    report = LifecycleService(
+        settings=settings, writer=writer, directory=directory, storage=storage
+    ).run()
+    return _render(
+        request,
+        "solicitacoes.html",
+        settings,
+        principal,
+        itens=storage.list_requests(limit=500),
+        titulo="Todas as solicitações",
+        aba="solicitacoes",
+        ciclo=report,
     )
 
 

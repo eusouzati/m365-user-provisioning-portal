@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Acesso inicial · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Acesso inicial de {{ req.conta.display_name }}</h1>
+<div class="alerta alerta-aviso"><strong>Este código aparece somente agora.</strong> Ele não fica salvo no portal. Se fechar esta página, será preciso gerar outro (o anterior deixa de valer).</div>
+<section class="painel tap">
+  <dl class="grade">
+    <dt>Login</dt><dd><code>{{ req.conta.user_principal_name }}</code></dd>
+    <dt>Temporary Access Pass</dt><dd><code class="tap-codigo">{{ codigo }}</code></dd>
+    <dt>Validade</dt><dd>{{ minutos }} minutos · uso único</dd>
+  </dl>
+</section>
+<section class="painel">
+  <h2>Como entregar</h2>
+  <ol class="linha-tempo">
+    <li>Entregue o código pessoalmente (ou por um canal seguro). Não envie por e-mail.</li>
+    <li>O colaborador acessa <code>https://aka.ms/mysecurityinfo</code>, informa o login e usa o código como senha.</li>
+    <li>Na primeira entrada, ele cadastra o MFA (Microsoft Authenticator) e/ou Windows Hello.</li>
+  </ol>
+</section>
+<p><a class="botao secundario" href="/equipe">Voltar para Minha equipe</a></p>
+{% endblock %}

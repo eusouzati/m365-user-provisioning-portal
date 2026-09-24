@@ -16,7 +16,11 @@
     User-LifeCycleInfo.ReadWrite.All  definir employeeHireDate / employeeLeaveDateTime
     GroupMember.ReadWrite.All         adicionar aos grupos de acesso do perfil
 
-  Níveis seguintes (Sprints 7 e 8) serão adicionados com a mesma confirmação.
+  Nível "ciclo-de-vida" (Sprint 7) — inclui os anteriores e adiciona:
+    UserAuthenticationMethod.ReadWrite.All  gerar o Temporary Access Pass (acesso inicial)
+    LicenseAssignment.ReadWrite.All         somente se LICENSE_MODE=direct no .env
+
+  O nível de desligamento (Sprint 8) será adicionado com a mesma confirmação.
   Idempotente e nunca remove permissões (permissões extras são apenas listadas).
 
   Permissões delegadas do operador (Administrador Global ou Administrador de Funções Privilegiadas):
@@ -30,7 +34,7 @@
 [CmdletBinding()]
 param(
     [ValidateSet('lab', 'production')] [string] $Environment = 'lab',
-    [ValidateSet('leitura', 'criacao')] [string] $Nivel = 'leitura',
+    [ValidateSet('leitura', 'criacao', 'ciclo-de-vida')] [string] $Nivel = 'leitura',
     [string] $EnvFile = (Join-Path (Split-Path $PSScriptRoot -Parent) '.env'),
     [switch] $WhatIfOnly
 )
@@ -51,13 +55,15 @@ $niveis = [ordered]@{
         'User-LifeCycleInfo.ReadWrite.All'
         'GroupMember.ReadWrite.All'
     )
+    'ciclo-de-vida' = @('UserAuthenticationMethod.ReadWrite.All')
 }
 # Cada nível inclui os anteriores
-$ordem = @('leitura', 'criacao')
+$ordem = @('leitura', 'criacao', 'ciclo-de-vida')
 $desejadas = @()
 foreach ($n in $ordem) { $desejadas += $niveis[$n]; if ($n -eq $Nivel) { break } }
 
 $cfg = Import-DotEnv $EnvFile
+if ($Nivel -eq 'ciclo-de-vida' -and $cfg['LICENSE_MODE'] -eq 'direct') { $desejadas += 'LicenseAssignment.ReadWrite.All' }
 $tenantId = Get-Required $cfg 'AZURE_TENANT_ID'
 $outputsPath = Get-OutputsPath $Environment
 if (-not (Test-Path $outputsPath)) { throw "Saídas da infraestrutura não encontradas ($outputsPath)." }

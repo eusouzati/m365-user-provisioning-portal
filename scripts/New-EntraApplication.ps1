@@ -14,6 +14,8 @@
     - (somente -AuthFlow fic) Credencial federada: Managed Identity do App Service -> App Registration
     - Grupos de segurança <PREFIXO>-Solicitantes-RH / -Aprovadores / -Administradores
     - Atribuição de cada App Role ao seu grupo (requer Entra ID P1 ou superior)
+    - App Role de APLICAÇÃO Provisionamento.Agendador atribuído à Managed Identity
+      (o agendador do ciclo de vida chama o portal com token para api://<client-id>)
   Ao final grava ENTRA_APP_CLIENT_ID no .env e salva entra-outputs.<ambiente>.json.
 
   Permissões delegadas usadas (entrar como Administrador Global ou Administrador de
@@ -120,6 +122,7 @@ Show-Item "Enterprise Application (service principal)" $sp
 if ($AuthFlow -eq 'fic') { Show-Item "Credencial federada '$ficName' (Managed Identity $miPrincipalId)" $fic }
 else { Write-Host "  ~ Fluxo de login: ID token (emissão de ID token habilitada no App Registration; sem segredo)" -ForegroundColor Yellow }
 foreach ($r in $roleDefs) { Show-Item "Grupo de segurança '$($r.group)' -> App Role $($r.value)" $groups[$r.key] }
+Write-Host "  ~ Garantir identificador api://<client-id>, tokens v2 e o papel de aplicação Provisionamento.Agendador para a Managed Identity" -ForegroundColor Yellow
 foreach ($g in $AddMeToGroups) { Write-Host "  + Adicionar $($ctx.Account) ao grupo de $g (se ainda não for membro)" -ForegroundColor Green }
 Write-Host "  ~ Gravar ENTRA_APP_CLIENT_ID no .env e salvar entra-outputs.$Environment.json" -ForegroundColor Yellow
 Write-Host "`nNada será excluído."
@@ -133,6 +136,13 @@ if ($app -and $app.appRoles) { $existingRoles = @($app.appRoles) }
 $appRoles = @($existingRoles | ForEach-Object {
         [ordered]@{ id = $_.id; allowedMemberTypes = @($_.allowedMemberTypes); displayName = $_.displayName
             description = $_.description; value = $_.value; isEnabled = $_.isEnabled } })
+$schedulerRole = [ordered]@{ value = 'Provisionamento.Agendador'; displayName = 'Agendador (automático)'
+    description = 'Somente aplicações: executa o ciclo de vida (licença D-1 e ativação D0).' }
+if (-not ($appRoles | Where-Object { $_.value -eq $schedulerRole.value })) {
+    $appRoles += [ordered]@{ id = [guid]::NewGuid().ToString(); allowedMemberTypes = @('Application')
+        displayName = $schedulerRole.displayName; description = $schedulerRole.description
+        value = $schedulerRole.value; isEnabled = $true }
+}
 foreach ($r in $roleDefs) {
     if (-not ($appRoles | Where-Object { $_.value -eq $r.value })) {
         $appRoles += [ordered]@{ id = [guid]::NewGuid().ToString(); allowedMemberTypes = @('User'); displayName = $r.displayName
@@ -145,7 +155,7 @@ if ($app -and $app.web -and $app.web.redirectUris) { $redirects = @(@($app.web.r
 $appBody = [ordered]@{
     displayName            = $appName
     signInAudience         = 'AzureADMyOrg'
-    notes                  = 'Portal de Provisionamento M365 (open source). Login via App Service Authentication com credencial federada de Managed Identity — sem Client Secret.'
+    notes                  = 'Portal de Provisionamento M365 (open source). Login via App Service Authentication, sem Client Secret.'
     web                    = [ordered]@{
         homePageUrl           = $webAppUrl
         logoutUrl             = "$webAppUrl/.auth/logout"
@@ -153,6 +163,8 @@ $appBody = [ordered]@{
         implicitGrantSettings = [ordered]@{ enableIdTokenIssuance = ($AuthFlow -eq 'idtoken'); enableAccessTokenIssuance = $false }
     }
     appRoles               = $appRoles
+    # Tokens v2 (emissor login.microsoftonline.com/<tenant>/v2.0), como o App Service espera
+    api                    = [ordered]@{ requestedAccessTokenVersion = 2 }
     requiredResourceAccess = @([ordered]@{ resourceAppId = $graphAppId; resourceAccess = @([ordered]@{ id = $userReadScope; type = 'Scope' }) })
 }
 
@@ -165,6 +177,12 @@ if (-not $app) {
     $app = Invoke-Graph -Uri "v1.0/applications/$($app.id)"
 }
 Write-Host "  Client ID: $($app.appId)"
+# Identificador da API (audiência do token do agendador): api://<client-id>
+$apiUri = "api://$($app.appId)"
+if (-not (@($app.identifierUris) -contains $apiUri)) {
+    Invoke-Graph -Method PATCH -Uri "v1.0/applications/$($app.id)" -Body ([ordered]@{ identifierUris = @($apiUri) }) | Out-Null
+    Write-Host "  Identificador da API: $apiUri"
+}
 
 # ---------- Service principal ----------
 if (-not $sp) {
@@ -214,6 +232,15 @@ foreach ($r in $roleDefs) {
             Write-Warning "Falha ao atribuir o papel ao grupo (atribuição de grupos a aplicativos exige Entra ID P1+): $($_.Exception.Message)"
         }
     }
+}
+
+# ---------- App Role do agendador -> Managed Identity ----------
+$schedulerRoleId = $roleIds['Provisionamento.Agendador']
+if (-not ($assigned | Where-Object { $_.principalId -eq $miPrincipalId -and $_.appRoleId -eq $schedulerRoleId })) {
+    Write-Host "Atribuindo o papel Provisionamento.Agendador à Managed Identity $miName..." -ForegroundColor Cyan
+    Invoke-Graph -Method POST -Uri "v1.0/servicePrincipals/$($sp.id)/appRoleAssignedTo" -Body ([ordered]@{
+            principalId = $miPrincipalId; resourceId = $sp.id; appRoleId = $schedulerRoleId
+        }) | Out-Null
 }
 
 # ---------- Adicionar o usuário atual ----------

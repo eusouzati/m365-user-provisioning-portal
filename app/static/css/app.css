@@ -89,3 +89,5 @@ button[disabled] { opacity:.6; cursor:wait; }
 .et-ok { background:#e6f4ea; color:#1e6b34; }
 .et-falhou { background:#ffe8e8; color:#b3261e; }
 .et-simulado { background:#fff4d6; color:#8a5a00; }
+.tap-codigo { font-size:22px; letter-spacing:2px; padding:4px 10px; user-select:all; }
+.titulo-linha form { margin:0; }

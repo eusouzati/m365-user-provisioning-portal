@@ -92,7 +92,12 @@ EtapaStatus = Literal["pendente", "ok", "falhou", "simulado"]
 ETAPA_LABELS: dict[str, str] = {
     "criar_usuario": "Criar usuário (desativado, sem licença)",
     "definir_gestor": "Definir gestor",
+    "licenca": "Atribuir licença (D-1)",
+    "ativar": "Ativar a conta (D0)",
 }
+
+# Etapas executadas pelo motor de ciclo de vida (não pelo provisionamento inicial)
+LIFECYCLE_KEYS = frozenset({"licenca", "ativar"})
 
 ETAPA_STATUS_LABELS: dict[str, str] = {
     "pendente": "Pendente",
@@ -150,6 +155,16 @@ def transition(
     if req.status == para:
         return req
     return _transition(req, ator, para, comentario)
+
+
+def note(req: ProvisioningRequest, ator: Pessoa, comentario: str) -> ProvisioningRequest:
+    """Registra um evento no histórico sem mudar o status (ex.: TAP gerado)."""
+    agora = datetime.now(UTC)
+    req.historico.append(
+        Evento(em=agora, ator=ator, de=req.status, para=req.status, comentario=comentario)
+    )
+    req.atualizado_em = agora
+    return req
 
 
 def format_request_id(day: date, sequence: int) -> str:

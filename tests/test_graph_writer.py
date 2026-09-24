@@ -102,3 +102,60 @@ def test_add_group_member_ok_e_erro():
 def test_get_user_by_upn_404():
     w = make(lambda req: httpx.Response(404, json={"error": {"code": "Request_ResourceNotFound"}}))
     assert w.get_user_by_upn("x@c.com") is None
+
+
+def test_enable_user_patch():
+    seen = {}
+
+    def handler(req):
+        seen.update(method=req.method, path=req.url.path, body=json.loads(req.content))
+        return httpx.Response(204)
+
+    make(handler).enable_user("u1")
+    assert seen == {"method": "PATCH", "path": "/v1.0/users/u1", "body": {"accountEnabled": True}}
+
+
+def test_assign_license():
+    seen = {}
+
+    def handler(req):
+        seen.update(path=req.url.path, body=json.loads(req.content))
+        return httpx.Response(200, json={"id": "u1"})
+
+    make(handler).assign_license("u1", "sku-1")
+    assert seen["path"] == "/v1.0/users/u1/assignLicense"
+    assert seen["body"]["addLicenses"][0]["skuId"] == "sku-1"
+    assert seen["body"]["removeLicenses"] == []
+
+
+def test_tap_remove_anterior_e_cria_uso_unico():
+    calls = []
+
+    def handler(req):
+        calls.append((req.method, req.url.path))
+        if req.method == "GET":
+            return httpx.Response(200, json={"value": [{"id": "old"}]})
+        if req.method == "DELETE":
+            return httpx.Response(204)
+        body = json.loads(req.content)
+        assert body == {"lifetimeInMinutes": 240, "isUsableOnce": True}
+        return httpx.Response(201, json={"id": "new", "temporaryAccessPass": "ABC#123"})
+
+    code = make(handler).create_temporary_access_pass("u1", 240)
+    base = "/v1.0/users/u1/authentication/temporaryAccessPassMethods"
+    assert code == "ABC#123"
+    assert calls == [("GET", base), ("DELETE", f"{base}/old"), ("POST", base)]
+
+
+def test_tap_nao_aparece_no_log(caplog):
+    import logging
+
+    caplog.set_level(logging.DEBUG)
+
+    def handler(req):
+        if req.method == "GET":
+            return httpx.Response(200, json={"value": []})
+        return httpx.Response(201, json={"id": "n", "temporaryAccessPass": "SEGREDO-TAP-999"})
+
+    make(handler).create_temporary_access_pass("u1", 60)
+    assert "SEGREDO-TAP-999" not in caplog.text

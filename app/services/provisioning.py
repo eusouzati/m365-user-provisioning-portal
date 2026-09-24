@@ -23,7 +23,13 @@ from zoneinfo import ZoneInfo
 from app.config import Settings
 from app.core.passwords import generate_password
 from app.core.profiles import TIPOS_COLABORADOR, eligible_access_groups
-from app.core.workflow import ETAPA_LABELS, Etapa, ProvisioningRequest, transition
+from app.core.workflow import (
+    ETAPA_LABELS,
+    LIFECYCLE_KEYS,
+    Etapa,
+    ProvisioningRequest,
+    transition,
+)
 from app.graph.directory import DirectoryCache
 from app.graph.errors import GraphError
 from app.graph.writer import GraphWriter
@@ -84,6 +90,29 @@ def plan_steps(req: ProvisioningRequest) -> list[Etapa]:
     return etapas
 
 
+def ensure_lifecycle_steps(req: ProvisioningRequest, settings: Settings) -> None:
+    """Acrescenta (uma vez) as etapas agendadas de licença (D-1) e ativação (D0)."""
+    chaves = {e.chave for e in req.etapas}
+    if req.data_licenca and "licenca" not in chaves:
+        lic = req.perfil.grupo_licenca or req.perfil.sku_licenca or {}
+        nome = lic.get("nome") or lic.get("part_number") or "licença"
+        req.etapas.append(
+            Etapa(
+                chave="licenca",
+                nome=f"{ETAPA_LABELS['licenca']}: {nome}",
+                detalhe=f"Agendada para {req.data_licenca:%d/%m/%Y}.",
+            )
+        )
+    if "ativar" not in chaves:
+        req.etapas.append(
+            Etapa(
+                chave="ativar",
+                nome=ETAPA_LABELS["ativar"],
+                detalhe=f"Agendada para {req.data_admissao:%d/%m/%Y}.",
+            )
+        )
+
+
 def created_today(storage: StorageBackend, settings: Settings) -> int:
     hoje = today_in(settings)
     tz = ZoneInfo(settings.timezone)
@@ -131,12 +160,14 @@ class UserProvisioningService:
                 f"A solicitação está '{req.status_label}' e não pode ser provisionada."
             )
         dry = self.writer.dry_run
-        if dry or not req.etapas or all(e.status == "simulado" for e in req.etapas):
+        prov = [e for e in req.etapas if e.chave not in LIFECYCLE_KEYS]
+        if dry or not prov or all(e.status == "simulado" for e in prov):
             req.etapas = plan_steps(req)
+        ensure_lifecycle_steps(req, self.settings)
 
         user_id = req.object_id
         for etapa in req.etapas:
-            if etapa.status == "ok":
+            if etapa.status == "ok" or etapa.chave in LIFECYCLE_KEYS:
                 continue
             try:
                 if etapa.chave == "criar_usuario":
@@ -154,7 +185,11 @@ class UserProvisioningService:
 
         if not dry:
             req.object_id = user_id or ""
-            pendentes = [e for e in req.etapas if e.status in ("falhou", "pendente")]
+            pendentes = [
+                e
+                for e in req.etapas
+                if e.chave not in LIFECYCLE_KEYS and e.status in ("falhou", "pendente")
+            ]
             if pendentes:
                 transition(
                     req, "falha_parcial", "Falha em: " + "; ".join(e.nome for e in pendentes)

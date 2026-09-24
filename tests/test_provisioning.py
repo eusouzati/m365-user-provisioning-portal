@@ -24,6 +24,14 @@ from app.storage.sqlite import SqliteStorage
 from tests.conftest import make_settings
 from tests.test_storage_contract import make_req
 
+
+def prov(req):
+    """Somente etapas do provisionamento inicial (sem as agendadas do ciclo de vida)."""
+    from app.core.workflow import LIFECYCLE_KEYS
+
+    return [e for e in req.etapas if e.chave not in LIFECYCLE_KEYS]
+
+
 TI = Pessoa(oid="oid-ti", nome="TI")
 
 
@@ -76,7 +84,7 @@ def test_cria_conta_desativada_com_gestor_e_grupos(env):
     assert "assignedLicenses" not in body  # sem licença na criação
     assert w.managers["new-1"] == "u-1"
     assert w.members == {"g-fin": {"new-1"}, "g-vpn": {"new-1"}}
-    assert all(e.status == "ok" for e in req.etapas)
+    assert all(e.status == "ok" for e in prov(req))
     assert req.historico[-1].para == "conta_criada"
     assert req.historico[-1].ator.nome == "Portal (automático)"
 
@@ -104,7 +112,7 @@ def test_dry_run_nao_escreve_nada(env):
     req = svc.run(aprovada(storage))
     assert req.status == "aprovada"  # status não muda em simulação
     assert req.object_id == ""
-    assert {e.status for e in req.etapas} == {"simulado"}
+    assert {e.status for e in prov(req)} == {"simulado"}
     assert w.planned[0].startswith("criar ")
 
 
@@ -115,7 +123,7 @@ def test_falha_parcial_e_reprocessamento(env):
     svc = service(env, w)
     req = svc.run(aprovada(storage))
     assert req.status == "falha_parcial"
-    status = {e.chave: e.status for e in req.etapas}
+    status = {e.chave: e.status for e in prov(req)}
     assert status == {
         "criar_usuario": "ok",
         "definir_gestor": "ok",
@@ -139,7 +147,7 @@ def test_falha_ao_criar_deixa_demais_pendentes(env):
     w.fail_create = True
     req = service(env, w).run(aprovada(storage))
     assert req.status == "falha_parcial" and req.object_id == ""
-    etapas = {e.chave: e.status for e in req.etapas}
+    etapas = {e.chave: e.status for e in prov(req)}
     assert etapas["criar_usuario"] == "falhou"
     assert etapas["definir_gestor"] == "pendente"
     assert w.calls == ["create_user"]
@@ -175,7 +183,7 @@ def test_grupo_que_virou_protegido_nao_e_usado(env):
     req = service(env, w).run(aprovada(storage))
     assert req.status == "falha_parcial"
     assert "g-vpn" not in w.members
-    assert "não é mais permitido" in next(e for e in req.etapas if e.chave == "grupo:g-vpn").detalhe
+    assert "não é mais permitido" in next(e for e in prov(req) if e.chave == "grupo:g-vpn").detalhe
 
 
 def test_limite_diario(env):
@@ -228,4 +236,4 @@ def test_gerador_de_senha():
 def test_etapas_tem_horario(env):
     _, storage, _, _ = env
     req = service(env, FakeGraphWriter()).run(aprovada(storage))
-    assert all(e.em and e.em <= datetime.now(UTC) for e in req.etapas)
+    assert all(e.em and e.em <= datetime.now(UTC) for e in prov(req))

@@ -35,11 +35,23 @@ Com este nível, o portal **não consegue alterar nada** no Microsoft 365. Além
 
 Proteções adicionais no código: escrita só existe com `DRY_RUN=false` (`MsGraphWriter`); grupos revalidados antes de cada inclusão; grupos com funções administrativas são recusados (e o Graph também os bloqueia sem `RoleManagement.*`); limite diário de contas (`PROVISIONING_DAILY_LIMIT`).
 
+## Nível `ciclo-de-vida` (Sprint 7) — inclui os anteriores
+
+```powershell
+./scripts/Set-GraphPermissions.ps1 -Environment lab -Nivel ciclo-de-vida
+```
+
+| Permissão | Uso no portal |
+|---|---|
+| `UserAuthenticationMethod.ReadWrite.All` | Gerar o Temporary Access Pass do novo colaborador (e remover o anterior) |
+| `LicenseAssignment.ReadWrite.All` | **Somente** com `LICENSE_MODE=direct` (atribuir SKU diretamente) |
+
+Com `LICENSE_MODE=group` (padrão) a licença é aplicada pela entrada no grupo de licença, usando `GroupMember.ReadWrite.All` (nível `criacao`). A ativação da conta usa `User.ReadWrite.All`.
+
 ## Próximos níveis (planejados)
 
 | Nível | Sprint | Permissões | Motivo |
 |---|---|---|---|
-| `ciclo-de-vida` | 7 | `UserAuthenticationMethod.ReadWrite.All` (+ `LicenseAssignment.ReadWrite.All` só com `LICENSE_MODE=direct`) | Gerar TAP; licença direta |
 | `desligamento` | 8 | `User.RevokeSessions.All` | Revogar sessões |
 
 ## Riscos e mitigação

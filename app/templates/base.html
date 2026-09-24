@@ -27,6 +27,7 @@
     {% if principal.has_any_role(Roles.SOLICITANTE) %}<a href="/solicitacoes">Solicitações</a>{% endif %}
     {% if principal.has_any_role(Roles.APROVADOR) %}<a href="/aprovacoes">Aprovações</a>{% endif %}
     {% if principal.has_any_role(Roles.ADMINISTRADOR) %}<a href="/admin">Administração</a>{% endif %}
+    <a href="/equipe">Minha equipe</a>
   </nav>
   {% endif %}
   <main class="conteudo">

@@ -20,7 +20,7 @@ MENSAGENS_403 = {
 
 
 def _is_api(request: Request) -> bool:
-    return request.url.path.startswith("/api/")
+    return request.url.path.startswith(("/api/", "/interno/"))
 
 
 def register_error_handlers(app: FastAPI) -> None:

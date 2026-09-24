@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Minha equipe · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Novos colaboradores da minha equipe</h1>
+{% if erro %}<div class="alerta alerta-erro" role="alert">{{ erro }}</div>{% endif %}
+<p class="ajuda">No dia da admissão, gere aqui o <strong>acesso inicial</strong> (Temporary Access Pass) e entregue-o pessoalmente ao colaborador. Com ele, o colaborador entra pela primeira vez e cadastra a senha e o MFA.</p>
+<div class="rolagem">
+<table class="tabela">
+  <thead><tr><th>Colaborador</th><th>Login</th><th>Admissão</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {% for r in itens %}
+    <tr>
+      <td>{{ r.conta.display_name }}</td>
+      <td><code class="pequeno">{{ r.conta.user_principal_name }}</code></td>
+      <td>{{ r.data_admissao.strftime("%d/%m/%Y") }}</td>
+      <td><span class="status-sol st-{{ r.status }}">{{ r.status_label }}</span></td>
+      <td>
+        {% if r.status == 'ativa' %}
+        <form method="post" action="/equipe/{{ r.id }}/acesso-inicial" data-envio-unico>
+          <input type="hidden" name="csrf_token" value="{{ request.state.csrf_token }}">
+          <button class="botao" type="submit">Gerar acesso inicial</button>
+        </form>
+        {% else %}
+        <span class="ajuda">Disponível no dia da admissão</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">Nenhum novo colaborador na sua equipe.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}
