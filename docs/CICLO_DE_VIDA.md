@@ -32,7 +32,7 @@ Propriedades:
 - TAP de **uso único**, validade = menor valor entre `TAP_LIFETIME_MINUTES` e o máximo da política do tenant.
 - Gerar de novo substitui o anterior (o Entra permite um TAP por usuário).
 - O código é exibido **uma única vez**, com `Cache-Control: no-store`; nunca é gravado, registrado em log ou enviado por e-mail. O histórico registra apenas quem gerou e quando.
-- O colaborador usa o TAP em `https://aka.ms/mysecurityinfo` para cadastrar MFA / Windows Hello.
+- O colaborador usa o TAP em `https://mysignins.microsoft.com/security-info` para cadastrar MFA / Windows Hello. Se o navegador abrir `login.live.com` (conta pessoal), o login corporativo não será encontrado: use janela anônima ou `https://login.microsoftonline.com`.
 
 ## Lifecycle Workflows (Entra ID Governance)
 
