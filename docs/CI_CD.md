@@ -30,7 +30,7 @@ O script (idempotente, nunca exclui nada):
 | Onde | O que cria/garante |
 |---|---|
 | Entra ID | App Registration `<prefixo>-github-deploy-<ambiente>` — **sem segredo e sem certificado**, somente este tenant |
-| Entra ID | Credencial federada: `repo:<dono>/<repo>:environment:<ambiente>` (emissor `token.actions.githubusercontent.com`) |
+| Entra ID | Credenciais federadas (emissor `token.actions.githubusercontent.com`) nos dois formatos de subject que o GitHub emite: `repo:<dono>/<repo>:environment:<ambiente>` e `repo:<dono>@<id>/<repo>@<id>:environment:<ambiente>` (padrão em repositórios novos) |
 | Azure RBAC | Papel **Website Contributor somente no Web App** do ambiente — nada na assinatura, no Storage, no Entra ID ou no Microsoft 365 |
 | GitHub | Ambiente `<ambiente>` restrito à **branch main** (production: também **aprovação obrigatória** por você) |
 | GitHub | Variáveis do ambiente `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_RESOURCE_GROUP`, `AZURE_WEBAPP_NAME` (identificadores, não segredos) |
@@ -51,6 +51,7 @@ O script (idempotente, nunca exclui nada):
 
 - Publicar agora: **Actions → Deploy → Run workflow** (ou `gh workflow run Deploy -f ambiente=lab`).
 - Histórico e logs: aba **Actions** do repositório; o resumo de cada execução mostra a versão publicada.
+- Erro `AADSTS700213: No matching federated identity record`: o subject apresentado (mostrado no erro) não corresponde a nenhuma credencial federada. Rode o script de novo; se o repositório usar um formato de subject personalizado, crie a credencial com o subject exato do erro.
 - Revogar o acesso do GitHub ao Azure: exclua a credencial federada (ou o App Registration `<prefixo>-github-deploy-<ambiente>`) no Entra ID, ou apague a variável `DEPLOY_<AMBIENTE>_ENABLED`.
 - Recomendado: em **Settings → Branches**, proteja a `main` exigindo pull request e as verificações `testes`, `bicep` e `segredos` (do workflow CI).
 - Endurecimento opcional: trocar Website Contributor por um papel personalizado só com leitura do site e publicação (`Microsoft.Web/sites/read`, `…/publish/Action`, `…/deployments/*`, `…/extensions/*`), impedindo que a identidade de deploy altere configurações de autenticação ou reabilite a autenticação básica.

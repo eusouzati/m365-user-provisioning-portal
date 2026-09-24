@@ -10,7 +10,9 @@
     - App Registration "<prefixo>-github-deploy-<ambiente>" (somente este tenant),
       SEM segredo e SEM certificado
     - Credencial federada: aceita tokens do ambiente "<ambiente>" deste repositório
-      (subject repo:<dono>/<repo>:environment:<ambiente>)
+      (subject repo:<dono>/<repo>:environment:<ambiente> e o formato com IDs
+       repo:<dono>@<id>/<repo>@<id>:environment:<ambiente>, que o GitHub usa em
+       repositórios novos)
     - Papel "Website Contributor" SOMENTE no Web App do ambiente (nada na assinatura,
       no Storage ou no Entra ID). Atenção: publicar código no Web App equivale aos
       privilégios da própria aplicação (a Managed Identity dela) — por isso o ambiente
@@ -78,7 +80,18 @@ if (-not $repoInfo.permissions.admin) { throw "Você precisa ser administrador d
 $Repository = $repoInfo.full_name  # grafia exata (o subject do OIDC diferencia maiúsculas)
 
 $appName = "$prefix-github-deploy-$Environment"
-$subject = "repo:${Repository}:environment:$Environment"
+# O GitHub emite um de dois formatos de subject: o clássico (nomes) ou o imutável
+# (nomes + IDs numéricos, padrão em repositórios novos). Registramos os dois; ambos
+# são exatos e presos a este repositório e ambiente (o com IDs resiste a renomeações).
+$owner, $repoName = $Repository -split '/', 2
+$subjects = [ordered]@{
+    "github-$Environment"     = "repo:${Repository}:environment:$Environment"
+    "github-$Environment-ids" = "repo:${owner}@$($repoInfo.owner.id)/${repoName}@$($repoInfo.id):environment:$Environment"
+}
+$oidcSub = Invoke-Soft { gh api "repos/$Repository/actions/oidc/customization/sub" } | ConvertFrom-Json
+if ($oidcSub -and $oidcSub.use_default -eq $false) {
+    Write-Host "  ! O repositório usa um formato de subject OIDC personalizado ($($oidcSub.include_claim_keys -join ', ')). Confira o subject no erro do deploy e ajuste a credencial federada." -ForegroundColor Yellow
+}
 $webAppId = az webapp show -g $rg -n $webApp --query id -o tsv
 if (-not $webAppId) { throw "Web App $webApp não encontrado em $rg." }
 
@@ -92,15 +105,15 @@ if ($app) {
     $sp = az ad sp list --filter "appId eq '$($app.appId)'" --query '[0]' -o json | ConvertFrom-Json
     $fics = @(az ad app federated-credential list --id $app.appId -o json | ConvertFrom-Json)
 }
-$ficName = "github-$Environment"
-$ficOk = @($fics | Where-Object { $_.subject -ceq $subject -and $_.issuer -eq 'https://token.actions.githubusercontent.com' }).Count -gt 0
-$ficExisting = @($fics | Where-Object { $_.name -eq $ficName }).Count -gt 0
+function Test-Fic([string] $subject) {
+    @($fics | Where-Object { $_.subject -ceq $subject -and $_.issuer -eq 'https://token.actions.githubusercontent.com' }).Count -gt 0
+}
 
 function Mark([bool] $exists) { if ($exists) { '=' } else { '+' } }
 Write-Host "`n== Plano — identidade de deploy do GitHub ($Environment) ==" -ForegroundColor Cyan
 Write-Host "  $(Mark ($null -ne $app)) App Registration '$appName' (sem segredo, somente este tenant)"
 Write-Host "  $(Mark ($null -ne $sp)) Service principal"
-Write-Host "  $(Mark $ficOk) Credencial federada: $subject"
+foreach ($n in $subjects.Keys) { Write-Host "  $(Mark (Test-Fic $subjects[$n])) Credencial federada: $($subjects[$n])" }
 Write-Host "  ~ Papel 'Website Contributor' somente em $webApp (garantir)"
 Write-Host "  ~ GitHub $Repository → ambiente '$Environment' (somente a branch main$(if ($Environment -eq 'production') { ' + aprovação obrigatória' }))"
 Write-Host "  ~ Variáveis do ambiente: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_WEBAPP_NAME"
@@ -123,8 +136,10 @@ if (-not $sp) {
     $sp = az ad sp create --id $app.appId -o json | ConvertFrom-Json
     if (-not $sp) { throw 'Falha ao criar o service principal.' }
 }
-if (-not $ficOk) {
-    Write-Host 'Criando credencial federada...'
+foreach ($ficName in $subjects.Keys) {
+    $subject = $subjects[$ficName]
+    if (Test-Fic $subject) { continue }
+    Write-Host "Gravando credencial federada $ficName..."
     $tmp = Join-Path ([IO.Path]::GetTempPath()) "fic-$([guid]::NewGuid()).json"
     @{
         name        = $ficName
@@ -134,13 +149,13 @@ if (-not $ficOk) {
         description = "GitHub Actions ($Repository, ambiente $Environment)"
     } | ConvertTo-Json | Set-Content -Path $tmp -Encoding ASCII
     try {
-        if ($ficExisting) {
+        if (@($fics | Where-Object { $_.name -eq $ficName }).Count -gt 0) {
             # mesmo nome, outro subject (ex.: repositório renomeado/transferido): atualiza
             az ad app federated-credential update --id $app.appId --federated-credential-id $ficName --parameters "@$tmp" -o none
         } else {
             az ad app federated-credential create --id $app.appId --parameters "@$tmp" -o none
         }
-        if ($LASTEXITCODE -ne 0) { throw 'Falha ao gravar a credencial federada.' }
+        if ($LASTEXITCODE -ne 0) { throw "Falha ao gravar a credencial federada $ficName." }
     } finally { Remove-Item $tmp -ErrorAction SilentlyContinue }
 }
 
