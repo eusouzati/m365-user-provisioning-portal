@@ -13,22 +13,28 @@ permissions:
 jobs:
   testes:
     runs-on: ubuntu-latest
-    services:
-      azurite:  # emulador do Azure Table Storage (testes de contrato)
-        image: mcr.microsoft.com/azure-storage/azurite
-        ports: ["10002:10002"]
-        options: >-
-          --entrypoint azurite-table
     env:
       # Chave pública e documentada do Azurite (não é segredo)
       AZURITE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;"
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements-dev.txt
+      - name: Azurite (emulador do Azure Table Storage, para os testes de contrato)
+        # Rodado à mão (e não como "service") para poder escutar em 0.0.0.0: por padrão o
+        # Azurite escuta só dentro do contêiner e o teste recebe "Connection reset".
+        run: |
+          docker run -d --name azurite -p 10002:10002 mcr.microsoft.com/azure-storage/azurite \
+            azurite-table --tableHost 0.0.0.0 --skipApiVersionCheck --loose
+          for i in $(seq 1 30); do
+            if curl -s -o /dev/null http://127.0.0.1:10002/; then echo "Azurite pronto"; exit 0; fi
+            sleep 1
+          done
+          docker logs azurite
+          exit 1
       - name: Lint
         run: |
           ruff check .
@@ -41,14 +47,14 @@ jobs:
   bicep:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Validar Bicep
         run: az bicep install && az bicep build --file infra/main.bicep --stdout > /dev/null
 
   segredos:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v2
