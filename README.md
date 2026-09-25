@@ -4,11 +4,11 @@ Portal **open source** (licença MIT) para automatizar a entrada e a saída de c
 
 Cada organização implanta o portal **no próprio tenant e na própria assinatura Azure**. Nenhum dado de tenant fica neste repositório.
 
-> **Status:** em desenvolvimento (v0.11). Admissão, desligamento, auditoria, LGPD, publicação automática pelo GitHub e nova interface completos.
+> **Status:** versão estável **1.0.0**. Admissão, aprovação, acesso inicial, desligamento, auditoria, LGPD e publicação automática pelo GitHub. Veja o [CHANGELOG](CHANGELOG.md).
 
 ## Documentação completa (PDF)
 
-**[Baixar a documentação completa em PDF](docs/Documentacao-Portal-Provisionamento-M365.pdf)** — 26 páginas para gestores e equipes técnicas: por que implantar, benefícios e riscos evitados, todas as funcionalidades com telas, arquitetura, segurança, permissões, implantação passo a passo, operação e glossário.
+**[Baixar a documentação completa em PDF](docs/Documentacao-Portal-Provisionamento-M365.pdf)** — 25 páginas para gestores e equipes técnicas: por que implantar, benefícios e riscos evitados, todas as funcionalidades com telas, arquitetura, segurança, permissões, implantação passo a passo, operação e glossário.
 
 No GitHub, abra o arquivo e use o botão **Download** (ícone de seta, no canto superior direito da visualização). A fonte do PDF está em [`docs/pdf/`](docs/pdf/) e pode ser regerada com `python docs/pdf/gerar_pdf.py`.
 
@@ -72,16 +72,35 @@ ruff check .
 
 ```text
 app/        FastAPI (portal + API)
-functions/  Agendador de ciclo de vida (Sprint 7)
 infra/      Bicep
 scripts/    PowerShell de apoio
 docs/       Documentação
 tests/      Testes
 ```
 
+## Documentação
+
+| Tema | Documento |
+|---|---|
+| Implantação do zero no seu tenant | [docs/IMPLANTACAO.md](docs/IMPLANTACAO.md) |
+| Checklist para produção | [docs/CHECKLIST_PRODUCAO.md](docs/CHECKLIST_PRODUCAO.md) |
+| Login, papéis e grupos | [docs/CONFIGURACAO_ENTRA.md](docs/CONFIGURACAO_ENTRA.md) |
+| Permissões do Microsoft Graph | [docs/PERMISSOES_GRAPH.md](docs/PERMISSOES_GRAPH.md) |
+| O que funciona com Free / P1 / P2 / Governance | [docs/LICENCIAMENTO.md](docs/LICENCIAMENTO.md) |
+| Custos | [docs/CUSTOS.md](docs/CUSTOS.md) |
+| Arquitetura | [docs/ARQUITETURA.md](docs/ARQUITETURA.md) |
+| Ciclo de vida (véspera, dia da admissão, acesso inicial) | [docs/CICLO_DE_VIDA.md](docs/CICLO_DE_VIDA.md) |
+| Desligamento | [docs/DESLIGAMENTO.md](docs/DESLIGAMENTO.md) |
+| Auditoria, painel e LGPD | [docs/AUDITORIA_E_LGPD.md](docs/AUDITORIA_E_LGPD.md) |
+| Regras de nome e login | [docs/REGRAS_DE_NOME.md](docs/REGRAS_DE_NOME.md) |
+| Publicação automática (GitHub Actions + OIDC) | [docs/CI_CD.md](docs/CI_CD.md) |
+| Segurança e revisão da v1.0 | [docs/SEGURANCA.md](docs/SEGURANCA.md) |
+| Solução de problemas | [docs/SOLUCAO_DE_PROBLEMAS.md](docs/SOLUCAO_DE_PROBLEMAS.md) |
+
 ## Segurança
 
 - Sem Client Secret: Microsoft Graph via **Managed Identity**, deploy via **GitHub OIDC**.
+- CI com testes, cobertura, `pip-audit`, gitleaks e CodeQL. Detalhes em [docs/SEGURANCA.md](docs/SEGURANCA.md).
 - O RH nunca vê credenciais; senhas e TAP nunca são registrados.
 - Relate vulnerabilidades conforme [SECURITY.md](SECURITY.md).
 

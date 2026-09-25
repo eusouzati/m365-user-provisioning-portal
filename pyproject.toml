@@ -1,6 +1,6 @@
 [project]
 name = "m365-user-provisioning-portal"
-version = "0.11.0"
+version = "1.0.0"
 description = "Portal open source para provisionamento de usuários no Microsoft 365 / Entra ID a partir de solicitações do RH"
 readme = "README.md"
 license = { text = "MIT" }
@@ -20,3 +20,7 @@ ignore = ["B008"]  # Depends() em parâmetros é o padrão do FastAPI
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+filterwarnings = [
+  # aviso do Starlette sobre o cliente de testes; não afeta o portal em execução
+  "ignore:Using .httpx. with .starlette.testclient.:DeprecationWarning",
+]

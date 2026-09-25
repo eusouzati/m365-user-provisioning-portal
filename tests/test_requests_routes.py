@@ -295,3 +295,15 @@ def test_csrf_nas_decisoes(c):
     rid = enviar(c)
     assert c.post(f"/aprovacoes/{rid}/aprovar", data={}, headers=TI).status_code == 403
     assert c.post(f"/solicitacoes/{rid}/cancelar", data={}, headers=RH).status_code == 403
+
+
+def test_aprovador_e_avisado_quando_solicitante_e_o_gestor(c):
+    rid = enviar(c)
+    st = c.app.state.storage
+    req = st.get_request(rid)
+    assert not req.gestor_e_solicitante
+    assert "também é o gestor" not in c.get(f"/solicitacoes/{rid}", headers=TI).text
+    req.gestor.id = req.solicitante.oid.upper()
+    st.update_request(req)
+    assert st.get_request(rid).gestor_e_solicitante
+    assert "também é o gestor" in c.get(f"/solicitacoes/{rid}", headers=TI).text

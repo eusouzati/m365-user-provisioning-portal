@@ -17,7 +17,7 @@
   <h1>Portal de Provisionamento de Usuários Microsoft 365</h1>
   <p class="sub">Documentação completa: por que implantar, o que o portal faz, como ele protege a organização e como colocá-lo para funcionar no seu Microsoft 365 e na sua assinatura Azure.</p>
   <div class="chips"><span>Admissão</span><span>Aprovação</span><span>Acesso inicial seguro</span><span>Desligamento</span><span>Auditoria</span><span>LGPD</span><span>Sem senhas nem segredos</span></div>
-  <div class="capa-rodape"><span>Versão do portal 0.11 · Setembro de 2026</span><span>github.com/eusouzati/m365-user-provisioning-portal</span></div>
+  <div class="capa-rodape"><span>Versão 1.0 · Setembro de 2026</span><span>github.com/eusouzati/m365-user-provisioning-portal</span></div>
 </section>
 
 <!-- ============================================================= SUMÁRIO -->
@@ -151,7 +151,7 @@
     <tr><td class="k">Agendador</td><td>O próprio sistema</td><td>Papel exclusivo da identidade do agendador (não de pessoas); executa licenças, ativações e desligamentos de hora em hora.</td></tr>
   </tbody>
 </table>
-<div class="caixa info"><span class="t">Segregação de funções</span>Mesmo quem tem os papéis de Solicitante e Aprovador não consegue aprovar o próprio pedido. Ninguém pede, aprova ou cancela o próprio desligamento, e o colaborador em desligamento nem enxerga o pedido.</div>
+<div class="caixa info"><span class="t">Segregação de funções</span>Mesmo quem tem os papéis de Solicitante e Aprovador não consegue aprovar o próprio pedido. Se quem pede uma admissão também é o gestor informado, o aprovador recebe um aviso destacado. Ninguém pede, aprova ou cancela o próprio desligamento, e o colaborador em desligamento nem enxerga o pedido.</div>
 
 <!-- ====================================================== PARTE II -->
 <div class="parte"><small>Parte II</small><span>Funcionalidades</span></div>
@@ -370,7 +370,7 @@
     <tr><td class="k">Cabeçalhos de segurança</td><td>CSP restritiva (nenhum script ou estilo externo ou embutido), HSTS, bloqueio de iframe, <code>nosniff</code>, sem cache.</td></tr>
     <tr><td class="k">Validação de entrada</td><td>Limites de tamanho e caracteres proibidos em todos os campos que chegam ao Microsoft 365.</td></tr>
     <tr><td class="k">Idempotência e concorrência</td><td>Reenvios não duplicam; gravações com controle de versão; a execução do desligamento é reservada antes de escrever.</td></tr>
-    <tr><td class="k">Dependências e segredos</td><td>A cada mudança, o CI roda lint, 332 testes automatizados, auditoria de dependências e varredura de segredos (gitleaks).</td></tr>
+    <tr><td class="k">Dependências e segredos</td><td>A cada mudança, o CI roda lint, mais de 330 testes automatizados com cobertura mínima de 85%, auditoria de dependências, varredura de segredos (gitleaks) e análise de código CodeQL. A v1.0 passou por uma revisão de segurança de ponta a ponta (docs/SEGURANCA.md).</td></tr>
   </tbody>
 </table>
 <div class="caixa perigo"><span class="t">Seja realista sobre o risco</span>Quem consegue publicar código no portal ganha, na prática, as permissões do portal no Microsoft 365. Proteja a branch principal (pull request e CI obrigatórios), limite quem pode escrever no repositório e exija aprovação para publicar em produção.</div>
@@ -516,7 +516,7 @@ pwsh ./scripts/New-GitHubDeployIdentity.ps1 -Environment lab   <span class="c">#
   </tbody>
 </table>
 <h3>Documentos detalhados no repositório</h3>
-<p class="pequeno"><code>docs/IMPLANTACAO.md</code> · <code>docs/CONFIGURACAO_ENTRA.md</code> · <code>docs/PERMISSOES_GRAPH.md</code> · <code>docs/CICLO_DE_VIDA.md</code> · <code>docs/DESLIGAMENTO.md</code> · <code>docs/AUDITORIA_E_LGPD.md</code> · <code>docs/REGRAS_DE_NOME.md</code> · <code>docs/CI_CD.md</code> · <code>docs/ARQUITETURA.md</code> · <code>docs/SOLUCAO_DE_PROBLEMAS.md</code> · <code>SECURITY.md</code></p>
+<p class="pequeno"><code>docs/IMPLANTACAO.md</code> · <code>docs/CONFIGURACAO_ENTRA.md</code> · <code>docs/PERMISSOES_GRAPH.md</code> · <code>docs/CICLO_DE_VIDA.md</code> · <code>docs/DESLIGAMENTO.md</code> · <code>docs/AUDITORIA_E_LGPD.md</code> · <code>docs/REGRAS_DE_NOME.md</code> · <code>docs/CI_CD.md</code> · <code>docs/ARQUITETURA.md</code> · <code>docs/SOLUCAO_DE_PROBLEMAS.md</code> · <code>docs/SEGURANCA.md</code> · <code>docs/LICENCIAMENTO.md</code> · <code>docs/CUSTOS.md</code> · <code>docs/CHECKLIST_PRODUCAO.md</code> · <code>SECURITY.md</code></p>
 <h3>Licença e contribuição</h3>
 <p>O projeto é distribuído sob a <strong>licença MIT</strong>: pode ser usado, alterado e redistribuído livremente, inclusive comercialmente, mantendo o aviso de copyright. É fornecido "no estado em que se encontra", sem garantias. Contribuições são bem-vindas (veja <code>CONTRIBUTING.md</code>); vulnerabilidades devem ser relatadas de forma privada, conforme <code>SECURITY.md</code>.</p>
 <div class="caixa info"><span class="t">Sobre as imagens</span>As capturas de tela deste documento foram feitas em ambiente de teste com a organização fictícia "Contoso" e pessoas fictícias. Nenhum dado real aparece.</div>

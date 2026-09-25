@@ -56,3 +56,12 @@ def test_script_da_identidade_nao_cria_segredo_e_limita_escopo():
     assert "environment:$Environment" in s and "api://AzureADTokenExchange" in s
     assert "AzureADMyOrg" in s
     assert s.count("Read-Host") == 1 and "-cne 'SIM'" in s
+
+
+def test_codeql_e_cobertura_no_ci():
+    ql = load("codeql.yml")
+    job = ql["jobs"]["analisar"]
+    assert job["permissions"] == {"contents": "read", "security-events": "write"}
+    assert any("codeql-action/analyze" in str(s.get("uses", "")) for s in job["steps"])
+    testes = next(s for s in load("ci.yml")["jobs"]["testes"]["steps"] if "pytest" in str(s))
+    assert "--cov=app" in testes["run"] and "--cov-fail-under" in testes["run"]

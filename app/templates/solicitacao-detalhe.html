@@ -14,6 +14,7 @@
 {% if ok == 'rejeitada' %}<div class="alerta alerta-ok">Solicitação rejeitada.</div>{% endif %}
 {% if ok == 'cancelada' %}<div class="alerta alerta-ok">Solicitação cancelada.</div>{% endif %}
 {% if erros %}<div class="alerta alerta-erro" role="alert"><ul>{% for e in erros %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+{% if pode_decidir and req.gestor_e_solicitante %}<div class="alerta alerta-aviso"><strong>Atenção:</strong> quem fez o pedido também é o gestor informado — e será quem gera o código de acesso inicial do novo colaborador. Confirme a contratação antes de aprovar.</div>{% endif %}
 {% if propria_pendente %}<div class="alerta alerta-aviso">Você fez esta solicitação; outro aprovador precisa decidir.</div>{% endif %}
 
 {% if req.eh_desligamento %}

@@ -97,6 +97,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
     allowBlobPublicAccess: false
     allowSharedKeyAccess: false // somente Entra ID / Managed Identity
     defaultToOAuthAuthentication: true
+    allowCrossTenantReplication: false
   }
 }
 
@@ -170,6 +171,8 @@ resource webApp 'Microsoft.Web/sites@2023-12-01' = {
       alwaysOn: !isFree
       ftpsState: 'Disabled'
       minTlsVersion: '1.2'
+      scmMinTlsVersion: '1.2'
+      remoteDebuggingEnabled: false
       http20Enabled: true
       appSettings: [
         { name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: 'true' }

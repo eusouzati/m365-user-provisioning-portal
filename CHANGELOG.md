@@ -4,6 +4,21 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e
 
 ## [Não lançado]
 
+## [1.0.0] - 2026-09-25
+
+Primeira versão estável: admissão e desligamento de colaboradores no Microsoft 365 a partir de pedidos do RH, com aprovação, acesso inicial seguro, auditoria, LGPD e publicação automática — sem nenhum segredo.
+
+### Segurança (Sprint 12)
+- Revisão de segurança de ponta a ponta ([docs/SEGURANCA.md](docs/SEGURANCA.md)).
+- Aviso ao aprovador quando quem pede a admissão também é o gestor informado (e, portanto, quem gera o código de acesso).
+- Infraestrutura: TLS 1.2 mínimo também no site de implantação (SCM), depuração remota desativada explicitamente, Storage sem replicação entre organizações.
+- CI: análise CodeQL, cobertura mínima de 85% nos testes.
+- Dependências atualizadas (httpx 0.28.1, pydantic-settings 2.15, pytest 9, pip-audit 2.10, pre-commit 4.6, setup-python v7); `pip-audit` sem vulnerabilidades conhecidas.
+
+### Documentação
+- Novos: [SEGURANCA.md](docs/SEGURANCA.md), [LICENCIAMENTO.md](docs/LICENCIAMENTO.md), [CUSTOS.md](docs/CUSTOS.md), [CHECKLIST_PRODUCAO.md](docs/CHECKLIST_PRODUCAO.md); PDF atualizado para a v1.0.
+
+
 ### Corrigido
 - Aviso "começa hoje" contava qualquer colaborador ativo da equipe; agora só admissões do dia.
 - Logs verbosos do Azure SDK e do httpx (e métricas ao vivo) desligados: menos custo e nenhuma URL do Graph nos logs.

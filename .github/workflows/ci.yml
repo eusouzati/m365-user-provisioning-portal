@@ -18,7 +18,7 @@ jobs:
       AZURITE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -39,8 +39,8 @@ jobs:
         run: |
           ruff check .
           ruff format --check .
-      - name: Testes
-        run: pytest
+      - name: Testes (com cobertura)
+        run: pytest --cov=app --cov-report=term:skip-covered --cov-fail-under=85
       - name: Auditoria de dependências
         run: pip-audit -r requirements.txt
 

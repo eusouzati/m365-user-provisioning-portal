@@ -198,6 +198,16 @@ class ProvisioningRequest(BaseModel):
     def eh_do_solicitante(self, oid: str) -> bool:
         return self.solicitante.oid.lower() == oid.lower()
 
+    @property
+    def gestor_e_solicitante(self) -> bool:
+        """Admissão em que quem pediu também será o gestor (e, portanto, quem gera o
+        código de acesso inicial). Permitido, mas o aprovador precisa conferir."""
+        return (
+            not self.eh_desligamento
+            and bool(self.gestor.id)
+            and self.gestor.id.lower() == self.solicitante.oid.lower()
+        )
+
 
 def transition(
     req: ProvisioningRequest, para: Status, comentario: str = "", ator: Pessoa = SISTEMA
