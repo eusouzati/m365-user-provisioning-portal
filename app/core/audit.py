@@ -23,7 +23,7 @@ ACOES: dict[str, str] = {
     "solicitacao.rejeitada": "Solicitação rejeitada",
     "solicitacao.cancelada": "Solicitação cancelada",
     "solicitacao.registro": "Registro no histórico",
-    "acesso_inicial.gerado": "Acesso inicial (TAP) gerado",
+    "acesso_inicial.gerado": "Acesso inicial gerado",
     "conta.criada": "Conta criada (desativada)",
     "conta.licenciada": "Licença atribuída",
     "conta.ativada": "Conta ativada",

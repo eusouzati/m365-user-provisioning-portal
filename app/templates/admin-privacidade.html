@@ -8,11 +8,22 @@
 <section class="painel">
   <h2>Retenção</h2>
   <dl class="grade">
-    <dt>Prazo de retenção</dt><dd>{% if settings.lgpd_retention_days %}{{ settings.lgpd_retention_days }} dias após a conclusão (<code>LGPD_RETENTION_DAYS</code>){% else %}<strong>Desativado</strong> — defina <code>LGPD_RETENTION_DAYS</code> (ex.: 730) nas configurações do App Service{% endif %}</dd>
-    <dt>Encarregado (DPO)</dt><dd>{{ settings.privacy_contact or "Não informado (PRIVACY_CONTACT)" }}</dd>
-    <dt>Execução</dt><dd>Automática, junto com o agendador (de hora em hora), quando o prazo está definido.</dd>
+    <dt>Prazo de retenção</dt><dd>{% if settings.lgpd_retention_days %}{{ settings.lgpd_retention_days }} dias após a conclusão da solicitação{% else %}<strong>Desativado</strong> — os dados das solicitações são mantidos até alguém anonimizá-los{% endif %}</dd>
+    <dt>Encarregado de dados (DPO)</dt><dd>{{ settings.privacy_contact or "Não informado" }}</dd>
+    <dt>Execução</dt><dd>{% if settings.lgpd_retention_days %}Automática, junto com o agendador (de hora em hora).{% else %}Manual, nesta página.{% endif %}</dd>
   </dl>
-  <p class="ajuda">Ao anonimizar, a solicitação perde nome, login, e-mail, matrícula, cargo, gestor, comentários e detalhes das etapas. Ficam número, tipo, status, datas, o Object ID da conta e quem pediu e aprovou. A conta no Microsoft 365 <strong>não</strong> é alterada. A anonimização não pode ser desfeita.</p>
+  <p class="ajuda">Ao anonimizar, a solicitação perde nome, login, e-mail, matrícula, cargo, gestor, comentários e detalhes das etapas. Ficam o número, o tipo, o status, as datas, o identificador da conta e quem pediu e aprovou. A conta no Microsoft 365 <strong>não</strong> é alterada. A anonimização não pode ser desfeita.</p>
+  {% if not settings.lgpd_retention_days or not settings.privacy_contact %}
+  <details class="tecnico">
+    <summary>Como definir o prazo e o encarregado</summary>
+    <p>Quem administra o Azure define estas configurações do App Service e reinicia o portal:</p>
+    <ul>
+      <li><code>LGPD_RETENTION_DAYS</code> — dias até anonimizar (sugestão: <code>730</code>, 2 anos).</li>
+      <li><code>PRIVACY_CONTACT</code> — e-mail ou nome do encarregado, exibido no aviso de privacidade.</li>
+    </ul>
+    <p>Mais detalhes em <em>docs/AUDITORIA_E_LGPD.md</em>.</p>
+  </details>
+  {% endif %}
 </section>
 
 <section class="painel">

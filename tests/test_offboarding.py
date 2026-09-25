@@ -169,7 +169,7 @@ def test_falha_no_bloqueio_continua_e_tenta_de_novo(env):
     req = agendado(env, imediato=True)
     assert req.status == "falha_parcial"
     assert etapa(req, "bloquear").status == "falhou"
-    assert "Set-GraphPermissions" in etapa(req, "bloquear").detalhe
+    assert "permissão" in etapa(req, "bloquear").detalhe
     assert JOAO in writer.revoked and "g-fin" in writer.removed  # o resto foi feito
 
     writer.fail_disable = False

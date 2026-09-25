@@ -33,7 +33,7 @@ from app.core.workflow import (
     transition,
 )
 from app.graph.directory import DirectoryCache
-from app.graph.errors import GraphError
+from app.graph.errors import GraphError, mensagem_usuario
 from app.graph.writer import GraphWriter
 from app.services.offboarding import EXECUTABLE as OFFBOARDING_EXECUTABLE
 from app.services.offboarding import OffboardingService, is_due
@@ -265,7 +265,11 @@ class LifecycleService:
         try:
             action()
         except (GraphError, LifecycleStepError) as exc:
-            etapa.status, etapa.detalhe, etapa.em = "falhou", str(exc)[:300], datetime.now(UTC)
+            etapa.status, etapa.detalhe, etapa.em = (
+                "falhou",
+                mensagem_usuario(exc)[:300],
+                datetime.now(UTC),
+            )
             logger.warning("Etapa %s falhou: %s", etapa.chave, exc)
             return False
         etapa.status, etapa.detalhe, etapa.em = "ok", "", datetime.now(UTC)
@@ -275,7 +279,7 @@ class LifecycleService:
         if self.settings.license_mode == "group":
             grupo = req.perfil.grupo_licenca
             if not grupo:
-                raise LifecycleStepError("O perfil não tem grupo de licença (LICENSE_MODE=group).")
+                raise LifecycleStepError("O perfil não tem grupo de licença.")
             permitidos = {
                 g.id.lower()
                 for g in eligible_license_groups(
@@ -291,7 +295,7 @@ class LifecycleService:
 
         sku = req.perfil.sku_licenca
         if not sku:
-            raise LifecycleStepError("O perfil não tem licença (LICENSE_MODE=direct).")
+            raise LifecycleStepError("O perfil não tem licença.")
         disponivel = next(
             (
                 s
@@ -301,7 +305,7 @@ class LifecycleService:
             None,
         )
         if not disponivel:
-            raise LifecycleStepError("A licença do perfil não existe mais no tenant.")
+            raise LifecycleStepError("A licença do perfil não existe mais no Microsoft 365.")
         if disponivel.available_units <= 0:
             raise LifecycleStepError(
                 f"Sem unidades disponíveis de {disponivel.sku_part_number}; será tentado de novo."

@@ -3,42 +3,49 @@
 {% block content %}
 {% set aba = 'visao' %}{% include "_admin_nav.html" %}
 <div class="titulo-linha">
-  <h1>Capacidades do tenant</h1>
+  <h1>Recursos do Microsoft 365</h1>
   <a class="botao secundario" href="/admin?refresh=true">Atualizar</a>
 </div>
 
 {% if erro_graph %}
-<div class="alerta alerta-erro"><strong>Microsoft Graph indisponível.</strong> {{ erro_graph }}</div>
+<div class="alerta alerta-erro"><strong>Não foi possível ler o Microsoft 365.</strong> {{ erro_graph }}</div>
+<details class="tecnico">
+  <summary>O que fazer</summary>
+  <p>Quem administra o Azure deve executar <code>scripts/Set-GraphPermissions.ps1</code> (nível <code>leitura</code> ou superior), reiniciar o App Service e aguardar alguns minutos. Veja <em>docs/IMPLANTACAO.md</em>.</p>
+</details>
 {% else %}
 
 <section class="painel">
-  <h2>Tenant</h2>
+  <h2>Visão geral</h2>
   <dl class="grade">
     <dt>Organização</dt><dd>{{ snap.organization.display_name }}</dd>
-    <dt>Tenant ID</dt><dd><code>{{ snap.organization.id }}</code></dd>
     <dt>Domínios verificados</dt>
-    <dd>{% for d in snap.domains if d.is_verified %}<code>{{ d.name }}</code>{% if d.is_default %} <span class="tag">padrão</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</dd>
-    <dt>Domínio configurado</dt><dd><code>{{ settings.m365_default_domain or "—" }}</code></dd>
-    <dt>Microsoft Graph</dt><dd><span class="status ok">Conectado (somente leitura)</span></dd>
-    <dt>Modo de execução</dt><dd>{% if settings.dry_run %}<span class="status aviso">DRY_RUN — nenhuma alteração no Microsoft 365</span>{% else %}<span class="status erro">Alterações reais habilitadas</span>{% endif %}</dd>
+    <dd>{% for d in snap.domains if d.is_verified %}<span class="login">{{ d.name }}</span>{% if d.is_default %} <span class="tag">padrão</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</dd>
+    <dt>Domínio dos novos logins</dt><dd><span class="login">{{ settings.m365_default_domain or "—" }}</span></dd>
+    <dt>Conexão</dt><dd><span class="status ok">Conectado ao Microsoft 365</span></dd>
+    <dt>Modo de execução</dt><dd>{% if settings.dry_run %}<span class="status aviso">Simulação — nenhuma alteração no Microsoft 365</span>{% else %}<span class="status erro">Alterações reais habilitadas</span>{% endif %}</dd>
   </dl>
+  <details class="tecnico">
+    <summary>Identificadores técnicos</summary>
+    <p>ID da organização (tenant): <code>{{ snap.organization.id }}</code></p>
+  </details>
 </section>
 
 {% for b in caps.bloqueios %}<div class="alerta alerta-erro">{{ b }}</div>{% endfor %}
 {% for a in caps.avisos %}<div class="alerta alerta-aviso">{{ a }}</div>{% endfor %}
 
 <section class="painel">
-  <h2>Capacidades</h2>
+  <h2>Recursos disponíveis</h2>
   <table class="tabela">
     <tbody>
-      <tr><th>Somente nuvem</th><td>{{ "Sim" if caps.cloud_only else "Não" }}</td></tr>
+      <tr><th>Contas somente na nuvem</th><td>{{ "Sim" if caps.cloud_only else "Não" }}</td></tr>
       <tr><th>Microsoft Entra ID P1</th><td>{{ "Sim" if caps.entra_p1 else "Não" }}</td></tr>
       <tr><th>Microsoft Entra ID P2</th><td>{{ "Sim" if caps.entra_p2 else "Não" }}</td></tr>
       <tr><th>Entra ID Governance</th><td>{{ "Sim" if caps.entra_governance else "Não" }}</td></tr>
       <tr><th>Exchange Online</th><td>{{ "Sim" if caps.exchange_online else "Não" }}</td></tr>
-      <tr><th>Temporary Access Pass</th><td>{% if caps.tap_enabled %}Habilitado (máx. {{ caps.tap_max_minutes }} min{% if not caps.tap_usable_once_default %}; o portal forçará uso único{% endif %}){% else %}Desabilitado{% endif %}</td></tr>
-      <tr><th>Modo de licença</th><td>Configurado: <code>{{ settings.license_mode }}</code> · Recomendado: <code>{{ caps.license_mode_recommended }}</code></td></tr>
-      <tr><th>Motor de ciclo de vida</th><td>Recomendado: <code>{{ caps.lifecycle_engine_recommended }}</code></td></tr>
+      <tr><th>Código de acesso inicial</th><td>{% if caps.tap_enabled %}Habilitado (validade máxima de {{ caps.tap_max_minutes }} min{% if not caps.tap_usable_once_default %}; o portal força uso único{% endif %}){% else %}Desabilitado{% endif %}</td></tr>
+      {% set modos = {"group": "Por grupo", "direct": "Direto na conta"} %}<tr><th>Como as licenças são dadas</th><td>{{ modos[settings.license_mode] }}{% if caps.license_mode_recommended != settings.license_mode %} · recomendado: {{ modos[caps.license_mode_recommended]|lower }}{% endif %}</td></tr>
+      {% set motores = {"native": "Agendador do próprio portal", "entra_lcw": "Lifecycle Workflows do Entra ID Governance"} %}<tr><th>Ciclo de vida recomendado</th><td>{{ motores[caps.lifecycle_engine_recommended] }}</td></tr>
     </tbody>
   </table>
 </section>
@@ -47,19 +54,24 @@
   <h2>Licenças</h2>
   <div class="rolagem">
   <table class="tabela">
-    <thead><tr><th>Licença</th><th>SKU Part Number</th><th>SKU ID</th><th class="num">Total</th><th class="num">Usadas</th><th class="num">Disponíveis</th></tr></thead>
+    <thead><tr><th>Licença</th><th class="num">Total</th><th class="num">Usadas</th><th class="num">Disponíveis</th></tr></thead>
     <tbody>
       {% for s in snap.skus %}
       <tr>
-        <td>{{ sku_name(s.sku_part_number) }}</td><td><code>{{ s.sku_part_number }}</code></td>
-        <td><code class="pequeno">{{ s.sku_id }}</code></td>
+        <td>{{ sku_name(s.sku_part_number) }}</td>
         <td class="num">{{ s.enabled_units }}</td><td class="num">{{ s.consumed_units }}</td>
         <td class="num {% if s.available_units == 0 %}zerado{% endif %}">{{ s.available_units }}</td>
       </tr>
-      {% else %}<tr><td colspan="6">Nenhuma licença encontrada.</td></tr>{% endfor %}
+      {% else %}<tr><td colspan="4">Nenhuma licença encontrada.</td></tr>{% endfor %}
     </tbody>
   </table>
   </div>
+  {% if snap.skus %}
+  <details class="tecnico">
+    <summary>Códigos técnicos das licenças</summary>
+    <ul>{% for s in snap.skus %}<li>{{ sku_name(s.sku_part_number) }}: <code>{{ s.sku_part_number }}</code> · <code class="pequeno">{{ s.sku_id }}</code></li>{% endfor %}</ul>
+  </details>
+  {% endif %}
 </section>
 
 <section class="painel">

@@ -5,8 +5,8 @@
 <div class="alerta alerta-aviso"><strong>Este código aparece somente agora.</strong> Ele não fica salvo no portal. Se fechar esta página, será preciso gerar outro (o anterior deixa de valer).</div>
 <section class="painel tap">
   <dl class="grade">
-    <dt>Login</dt><dd><code>{{ req.conta.user_principal_name }}</code></dd>
-    <dt>Temporary Access Pass</dt><dd><code class="tap-codigo">{{ codigo }}</code></dd>
+    <dt>Login</dt><dd><span class="login">{{ req.conta.user_principal_name }}</span></dd>
+    <dt>Código de acesso</dt><dd><code class="tap-codigo">{{ codigo }}</code></dd>
     <dt>Validade</dt><dd>{{ minutos }} minutos · uso único</dd>
   </dl>
 </section>

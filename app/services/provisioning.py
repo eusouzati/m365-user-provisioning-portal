@@ -31,7 +31,7 @@ from app.core.workflow import (
     transition,
 )
 from app.graph.directory import DirectoryCache
-from app.graph.errors import GraphError
+from app.graph.errors import GraphError, mensagem_usuario
 from app.graph.writer import GraphWriter
 from app.services.onboarding import today_in
 from app.storage import StorageBackend
@@ -181,7 +181,7 @@ class UserProvisioningService:
                     self._add_group(etapa, etapa.chave.split(":", 1)[1], user_id)
             except (GraphError, ProvisioningError) as exc:
                 logger.warning("Solicitação %s, etapa %s falhou: %s", req.id, etapa.chave, exc)
-                self._fail(etapa, str(exc))
+                self._fail(etapa, mensagem_usuario(exc))
 
         if not dry:
             req.object_id = user_id or ""
@@ -211,13 +211,13 @@ class UserProvisioningService:
                 self._ok(etapa, "Usuário já existia (tentativa anterior) e foi reaproveitado.")
                 return existente["id"]
             raise ProvisioningError(
-                f"O UPN {upn} foi ocupado por outro usuário. Cancele e refaça a solicitação."
+                f"O login {upn} foi ocupado por outro usuário. Cancele e refaça a solicitação."
             )
 
         limite = self.settings.provisioning_daily_limit
         if created_today(self.storage, self.settings) >= limite:
             raise ProvisioningError(
-                f"Limite diário de {limite} contas criadas atingido (PROVISIONING_DAILY_LIMIT)."
+                f"Limite diário de {limite} contas criadas atingido. Tente de novo amanhã."
             )
 
         password = generate_password()
@@ -225,7 +225,7 @@ class UserProvisioningService:
             user_id = self.writer.create_user(user_body(req, self.settings, password))
         finally:
             del password  # descartada: nunca exibida, registrada ou armazenada
-        self._ok(etapa, f"Object ID {user_id}")
+        self._ok(etapa, "Conta criada.")
         logger.info("Solicitação %s: usuário %s criado (desativado)", req.id, user_id)
         return user_id
 

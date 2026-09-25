@@ -9,9 +9,9 @@
   <dl class="grade">
     <dt>Nome completo</dt><dd>{{ r.names.given_name }} {{ r.names.surname }}</dd>
     <dt>Nome de exibição</dt><dd>{{ r.names.display_name }}</dd>
-    <dt>UPN (login)</dt><dd><code>{{ r.names.user_principal_name }}</code></dd>
-    <dt>E-mail</dt><dd><code>{{ r.names.mail }}</code></dd>
-    <dt>Alias (mailNickname)</dt><dd><code>{{ r.names.mail_nickname }}</code></dd>
+    <dt>Login</dt><dd><span class="login">{{ r.names.user_principal_name }}</span></dd>
+    <dt>E-mail</dt><dd><span class="login">{{ r.names.mail }}</span></dd>
+    <dt>Apelido de e-mail</dt><dd><span class="login">{{ r.names.mail_nickname }}</span></dd>
     <dt>Matrícula</dt><dd>{{ r.form.matricula }}</dd>
     <dt>Tipo</dt><dd>{{ r.tipo_label }}</dd>
   </dl>
@@ -43,11 +43,11 @@
   <ol class="linha-tempo">
     <li><strong>Após a aprovação:</strong> conta criada <em>desativada</em>, sem licença, com gestor e grupos.</li>
     {% if r.data_licenca %}<li><strong>{{ "Imediatamente" if r.licenca_imediata else r.data_licenca.strftime("%d/%m/%Y") }}:</strong> licença atribuída (caixa de correio preparada).</li>{% endif %}
-    <li><strong>{{ "Imediatamente" if r.ativacao_imediata else r.data_ativacao.strftime("%d/%m/%Y") }} (admissão):</strong> conta ativada; o gestor gera o acesso inicial (TAP) no portal.</li>
+    <li><strong>{{ "Imediatamente" if r.ativacao_imediata else r.data_ativacao.strftime("%d/%m/%Y") }} (admissão):</strong> conta ativada; o gestor gera o código de acesso inicial no portal.</li>
   </ol>
 </section>
 
-{% if settings.dry_run %}<div class="alerta alerta-aviso"><strong>DRY_RUN ativo.</strong> Ao enviar, nada será gravado nem criado no Microsoft 365.</div>{% endif %}
+{% if settings.dry_run %}<div class="alerta alerta-aviso"><strong>Modo simulação.</strong> Ao enviar, nada será gravado nem criado no Microsoft 365.</div>{% endif %}
 
 <div class="acoes">
   <form method="post" action="/solicitacoes/enviar" data-envio-unico>{% include "_hidden_form.html" %}<button class="botao" type="submit">Enviar solicitação</button></form>

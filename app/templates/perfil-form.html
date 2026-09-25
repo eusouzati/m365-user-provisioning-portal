@@ -34,7 +34,7 @@
     {% for g in grupos_acesso %}
     <label class="opcao"><input type="checkbox" name="grupos_acesso" value="{{ g.id }}" {% if g.id in perfil.grupos_acesso %}checked{% endif %}> {{ g.display_name }}{% if g.description %} <span class="ajuda">— {{ g.description }}</span>{% endif %}</label>
     {% else %}
-    <p class="ajuda">Nenhum grupo de segurança elegível no tenant.</p>
+    <p class="ajuda">Nenhum grupo de segurança disponível no Microsoft 365.</p>
     {% endfor %}
   </fieldset>
 
@@ -47,7 +47,7 @@
         {% for g in grupos_licenca %}<option value="{{ g.id }}" {% if perfil.grupo_licenca == g.id %}selected{% endif %}>{{ g.display_name }}</option>{% endfor %}
       </select>
     </label>
-    {% if not grupos_licenca %}<p class="ajuda">Nenhum grupo com licença atribuída foi encontrado. Crie um grupo de segurança no Entra ID e atribua a licença a ele (Entra admin center → Grupos → Licenças).</p>{% endif %}
+    {% if not grupos_licenca %}<p class="ajuda">Nenhum grupo com licença atribuída foi encontrado. Crie um grupo de segurança no Microsoft 365 e atribua a licença a ele (Centro de administração do Entra → Grupos → Licenças).</p>{% endif %}
     <p class="ajuda">O colaborador entra neste grupo somente no dia anterior à admissão.</p>
     {% else %}
     <label>Licença (atribuição direta)

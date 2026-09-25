@@ -15,10 +15,10 @@
 <section class="painel">
   <h2>Agendador</h2>
   {% if d.ultimo_ciclo %}
-  <p>Última execução: <strong>{{ d.ultimo_ciclo.executadoEm|data_iso_local }}</strong>{% if d.ultimo_ciclo.dryRun %} <span class="tag">DRY_RUN</span>{% endif %} —
+  <p>Última execução: <strong>{{ d.ultimo_ciclo.executadoEm|data_iso_local }}</strong>{% if d.ultimo_ciclo.dryRun %} <span class="tag">simulação</span>{% endif %} —
     {{ d.ultimo_ciclo.analisadas }} analisada(s), {{ d.ultimo_ciclo.ativadas|length }} ativada(s), {{ d.ultimo_ciclo.desligadas|length }} desligamento(s),
     {{ d.ultimo_ciclo.falhas|length }} falha(s){% if d.ultimo_ciclo.anonimizadas %}, {{ d.ultimo_ciclo.anonimizadas|length }} anonimizada(s){% endif %}.</p>
-  <p class="ajuda">O agendador roda de hora em hora. Se a última execução tiver mais de 2 horas, confira o histórico da Logic App no portal do Azure.</p>
+  <p class="ajuda">O agendador roda de hora em hora. Se a última execução tiver mais de 2 horas, peça a quem administra o Azure para conferir o agendador.</p>
   {% else %}
   <p class="ajuda">Nenhuma execução registrada ainda. O agendador roda de hora em hora; você também pode executar em <a href="/admin/solicitacoes">Todas as solicitações</a>.</p>
   {% endif %}

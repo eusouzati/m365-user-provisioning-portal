@@ -96,3 +96,55 @@ def test_icones_sao_decorativos_e_validos():
 )
 def test_iniciais(nome, esperado):
     assert _iniciais(nome) == esperado
+
+
+# ----------------------------------------------------------- linguagem simples
+JARGAO = re.compile(
+    r"DRY_RUN|\bUPN\b|Object ID|\btenant\b|Microsoft Graph|\bTAP\b|\bD-1\b|\bD0\b|_DAYS\b"
+)
+
+
+def _sem_detalhes_tecnicos(html: str) -> str:
+    """Remove os blocos recolhidos para administradores e os atributos das tags."""
+    html = re.sub(r'<details class="tecnico">.*?</details>', "", html, flags=re.S)
+    html = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", html, flags=re.S)
+    return re.sub(r"<[^>]+>", " ", html)
+
+
+def test_telas_sem_jargao_tecnico(tmp_path):
+    c, h = _cliente(tmp_path, (Roles.SOLICITANTE, Roles.APROVADOR, Roles.ADMINISTRADOR))
+    for url in (
+        "/",
+        "/solicitacoes",
+        "/solicitacoes/novo",
+        "/desligamentos/novo",
+        "/aprovacoes",
+        "/equipe",
+        "/admin",
+        "/admin/painel",
+        "/admin/privacidade",
+        "/privacidade",
+    ):
+        texto = _sem_detalhes_tecnicos(c.get(url, headers=h).text)
+        assert not JARGAO.search(texto), (url, JARGAO.search(texto).group(0))
+
+
+@pytest.mark.parametrize(
+    ("status", "code", "trecho"),
+    [
+        (403, "Authorization_RequestDenied", "não tem permissão"),
+        (404, "Request_ResourceNotFound", "Não encontrado"),
+        (429, "TooManyRequests", "pausa"),
+        (400, "CountViolation", "licenças disponíveis"),
+        (400, "Request_BadRequest", "recusou"),
+        (503, "", "não respondeu"),
+    ],
+)
+def test_mensagem_usuario_sem_jargao(status, code, trecho):
+    from app.graph.errors import GraphError, mensagem_usuario
+
+    msg = mensagem_usuario(GraphError(f"Graph {status} {code}: detalhe interno", status, code))
+    assert trecho in msg and f"(código {status})" in msg
+    assert "Graph" not in msg and "detalhe interno" not in msg
+    if code:
+        assert code not in msg

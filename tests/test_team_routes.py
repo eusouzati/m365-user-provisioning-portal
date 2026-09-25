@@ -109,7 +109,8 @@ def test_gestor_ve_equipe_e_gera_tap(c):
     assert resp.headers["Cache-Control"] == "no-store"
     # nunca armazenado
     assert codigo not in req.model_dump_json()
-    assert "TAP" in req.historico[-1].comentario and req.historico[-1].ator.nome == "Ana Gestora"
+    assert "Acesso inicial gerado" in req.historico[-1].comentario
+    assert req.historico[-1].ator.nome == "Ana Gestora"
     # validade limitada pela política (480) e pela configuração
     assert writer.calls[-1].endswith(":480")
 
@@ -135,7 +136,7 @@ def test_tap_politica_desabilitada(c):
     c.post("/interno/ciclo-de-vida", headers=AGENDADOR)
     c.app.state.graph.tap_policy = TapPolicy(False, 60, 480, False)
     resp = c.post(f"/equipe/{rid}/acesso-inicial", data={"csrf_token": csrf(c)}, headers=GESTORA)
-    assert resp.status_code == 409 and "desabilitada" in resp.text
+    assert resp.status_code == 409 and "desativado" in resp.text
 
 
 def test_tap_respeita_maximo_da_politica(c):
@@ -162,7 +163,7 @@ def test_tap_erro_do_graph_mostra_motivo(c, status, trecho):
     c.app.state.writer.create_temporary_access_pass = falha
     resp = c.post(f"/equipe/{rid}/acesso-inicial", data={"csrf_token": csrf(c)}, headers=GESTORA)
     assert resp.status_code == 409
-    assert trecho in resp.text and "motivo simulado" in resp.text
+    assert trecho in resp.text and "motivo simulado" not in resp.text  # detalhe só no log
 
 
 def test_tap_exige_csrf(c):

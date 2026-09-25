@@ -109,7 +109,7 @@ def resolve_selection(
     for gid in ids:
         g = by_id.get(gid.lower())
         if not g:
-            erros.append("Um dos grupos selecionados não existe mais no tenant.")
+            erros.append("Um dos grupos selecionados não existe mais no Microsoft 365.")
             continue
         problem = _group_problem(g, protected)
         if problem:
@@ -125,11 +125,11 @@ def resolve_selection(
     sku_ref: SkuRef | None = None
     if license_mode == "group":
         if sku_id:
-            erros.append("Com LICENSE_MODE=group a licença é definida por grupo, não por SKU.")
+            erros.append("Neste portal a licença é dada por grupo: escolha um grupo de licença.")
         if license_group_id:
             g = by_id.get(license_group_id.strip().lower())
             if not g:
-                erros.append("O grupo de licença selecionado não existe mais no tenant.")
+                erros.append("O grupo de licença selecionado não existe mais no Microsoft 365.")
             elif problem := _group_problem(g, protected):
                 erros.append(f"O grupo '{g.display_name}' não pode ser usado: {problem}.")
             elif not g.is_license_group:
@@ -138,11 +138,13 @@ def resolve_selection(
                 grupo_licenca = GroupRef(id=g.id, nome=g.display_name)
     else:
         if license_group_id:
-            erros.append("Com LICENSE_MODE=direct a licença é definida por SKU, não por grupo.")
+            erros.append(
+                "Neste portal a licença é atribuída diretamente: escolha uma licença, não um grupo."
+            )
         if sku_id:
             s = next((s for s in eligible_skus(skus) if s.sku_id.lower() == sku_id.lower()), None)
             if not s:
-                erros.append("A licença selecionada não está disponível no tenant.")
+                erros.append("A licença selecionada não está disponível no Microsoft 365.")
             else:
                 sku_ref = SkuRef(sku_id=s.sku_id, part_number=s.sku_part_number)
 

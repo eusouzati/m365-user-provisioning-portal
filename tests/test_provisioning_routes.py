@@ -62,7 +62,7 @@ def test_aprovacao_em_dry_run_simula(dry):
     assert req.status == "aprovada" and req.object_id == ""
     assert {e.status for e in prov(req)} == {"simulado"}
     html = dry.get(f"/solicitacoes/{rid}?ok=aprovada", headers=TI).text
-    assert "Simulada (DRY_RUN)" in html and "provisionamento foi apenas simulado" in html
+    assert "Simulada" in html and "provisionamento foi apenas simulado" in html
 
 
 def test_aprovacao_real_cria_conta(real):

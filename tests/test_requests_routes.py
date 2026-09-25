@@ -177,7 +177,7 @@ def test_fila_e_aprovacao(c):
     assert resp.status_code == 303
     req = c.app.state.storage.get_request(rid)
     assert req.status == "aprovada" and req.historico[-1].ator.nome == "Tina TI"
-    assert "DRY_RUN" in c.get(f"/solicitacoes/{rid}?ok=aprovada", headers=TI).text
+    assert "Modo simulação" in c.get(f"/solicitacoes/{rid}?ok=aprovada", headers=TI).text
 
 
 def test_solicitante_aprovador_nao_aprova_a_propria(c):

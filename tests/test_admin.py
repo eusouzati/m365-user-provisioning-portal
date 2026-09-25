@@ -47,7 +47,7 @@ def test_capacidades_mostra_tenant_licencas_e_grupos(admin):
     assert "Microsoft 365 E3" in html and "SPE_E3" in html
     assert "papel do portal" in html  # grupo protegido sinalizado
     assert "funções administrativas" in html  # role-assignable sinalizado
-    assert "DRY_RUN" in html
+    assert "Simulação" in html and "DRY_RUN" not in html
 
 
 def test_capacidades_json(admin):

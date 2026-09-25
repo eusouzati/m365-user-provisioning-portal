@@ -23,7 +23,7 @@
     </a>
     <span class="selos">
       <span class="selo selo-{{ settings.environment }}">{{ settings.environment }}</span>
-      {% if settings.dry_run %}<span class="selo selo-dryrun" title="Simulação: nada é alterado no Microsoft 365">DRY_RUN</span>{% endif %}
+      {% if settings.dry_run %}<span class="selo selo-dryrun" title="Modo simulação: nada é alterado no Microsoft 365">Simulação</span>{% endif %}
       {% if settings.auth_mode == "dev" %}<span class="selo selo-dev">login simulado</span>{% endif %}
     </span>
     <span class="topo-acoes">

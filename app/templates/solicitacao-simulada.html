@@ -7,7 +7,7 @@
 <section class="painel">
   <dl class="grade">
     <dt>Colaborador</dt><dd>{{ r.names.display_name }}</dd>
-    <dt>UPN que seria usado</dt><dd><code>{{ r.names.user_principal_name }}</code></dd>
+    <dt>Login que seria usado</dt><dd><span class="login">{{ r.names.user_principal_name }}</span></dd>
     <dt>Admissão</dt><dd>{{ r.data_ativacao.strftime("%d/%m/%Y") }}</dd>
     <dt>Perfil</dt><dd>{{ r.perfil.nome }}</dd>
   </dl>

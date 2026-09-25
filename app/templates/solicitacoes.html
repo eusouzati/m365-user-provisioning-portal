@@ -15,7 +15,7 @@
 {% if ciclo %}
 <div class="alerta {% if ciclo.falhas %}alerta-aviso{% else %}alerta-ok{% endif %}">
   {% if ciclo.dry_run %}
-  <strong>DRY_RUN ativo:</strong> o ciclo de vida não altera nada.
+  <strong>Modo simulação:</strong> o ciclo de vida não altera nada.
   {% else %}
   <strong>Ciclo de vida executado.</strong>
   {{ ciclo.analisadas }} conta(s) analisada(s) ·
@@ -26,7 +26,7 @@
   {% endif %}
 </div>
 {% endif %}
-{% if aba %}<p class="ajuda">O ciclo de vida (licença no D-1, ativação no D0 e desligamentos agendados) roda automaticamente de hora em hora.</p>{% endif %}
+{% if aba %}<p class="ajuda">O ciclo de vida (licença na véspera da admissão, ativação no dia da admissão e desligamentos agendados) roda automaticamente de hora em hora.</p>{% endif %}
 {% set mostrar_solicitante = aba %}
 {% include "_lista_solicitacoes.html" %}
 {% endblock %}

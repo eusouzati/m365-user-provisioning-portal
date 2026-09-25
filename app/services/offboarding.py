@@ -37,7 +37,7 @@ from app.core.workflow import (
     transition,
 )
 from app.graph.directory import DirectoryCache
-from app.graph.errors import GraphError
+from app.graph.errors import GraphError, mensagem_usuario
 from app.graph.models import Group, UserSummary
 from app.graph.service import GraphService
 from app.graph.writer import GraphWriter
@@ -329,11 +329,14 @@ class OffboardingService:
         e.em = self._now()
 
     def _fail(self, e: Etapa, exc: Exception) -> None:
-        texto = str(exc)
+        texto = mensagem_usuario(exc)
         if isinstance(exc, GraphError) and exc.status == 403:
-            texto += (
-                " — confira as permissões (Set-GraphPermissions.ps1 -Nivel desligamento) e se a "
-                "conta tem funções administrativas."
+            texto += " Contas com funções administrativas precisam ser tratadas manualmente."
+            logger.warning(
+                "Desligamento: 403 em %s — confira Set-GraphPermissions.ps1 -Nivel desligamento "
+                "e se a conta tem funções administrativas (%s)",
+                e.chave,
+                exc,
             )
         e.status, e.detalhe, e.em = "falhou", texto[:300], self._now()
 
@@ -445,8 +448,8 @@ class OffboardingService:
                         chave=f"manual:licenca:{s.sku_id}",
                         nome=nome,
                         status="manual",
-                        detalhe="Atribuída diretamente: remova no Centro de administração "
-                        "(ou use LICENSE_MODE=direct).",
+                        detalhe="Licença atribuída diretamente à conta: remova no Centro de "
+                        "administração do Microsoft 365.",
                     )
                 )
         if subordinados:

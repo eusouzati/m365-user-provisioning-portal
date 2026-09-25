@@ -27,7 +27,7 @@ def request_events(old: ProvisioningRequest | None, new: ProvisioningRequest) ->
         if ev.de == ev.para:
             if ev.comentario.startswith(ANON_NOTE):
                 acao = "lgpd.anonimizado"
-            elif "TAP" in ev.comentario:
+            elif ev.comentario.startswith("Acesso inicial gerado") or "TAP" in ev.comentario:
                 acao = "acesso_inicial.gerado"
             else:
                 acao = "solicitacao.registro"

@@ -58,23 +58,26 @@ def detect_capabilities(
 
     if not caps.cloud_only:
         caps.bloqueios.append(
-            "O tenant sincroniza usuários de um Active Directory local. Este portal cria contas "
-            "somente na nuvem; usuários devem ser criados no AD local nesse cenário."
+            "A organização sincroniza usuários de um Active Directory local. Este portal cria "
+            "contas somente na nuvem; nesse cenário, os usuários devem ser criados no AD local."
         )
     if license_mode == "group" and not p1:
         caps.bloqueios.append(
-            "LICENSE_MODE=group exige Microsoft Entra ID P1 (licenciamento por grupo). "
-            "Use LICENSE_MODE=direct ou adquira P1."
+            "O portal está configurado para dar licenças por grupo, o que exige Microsoft Entra "
+            "ID P1. Adquira o P1 ou configure o portal para atribuir licenças diretamente "
+            "(veja a documentação de implantação)."
         )
     if not caps.tap_enabled:
         caps.avisos.append(
-            "A política de Temporary Access Pass está desabilitada. Habilite-a antes da Sprint 7 "
-            "(Entra admin center → Métodos de autenticação → Temporary Access Pass)."
+            "O acesso inicial por código temporário está desativado no Microsoft 365. Sem ele, o "
+            "gestor não consegue gerar o primeiro acesso do colaborador (habilite em Entra → "
+            "Métodos de autenticação → Temporary Access Pass)."
         )
     elif caps.tap_max_minutes and tap_lifetime_minutes > caps.tap_max_minutes:
         caps.avisos.append(
-            f"TAP_LIFETIME_MINUTES ({tap_lifetime_minutes}) é maior que o máximo permitido pela "
-            f"política do tenant ({caps.tap_max_minutes})."
+            f"A validade configurada para o código de acesso ({tap_lifetime_minutes} min) é maior "
+            f"que o máximo permitido no Microsoft 365 ({caps.tap_max_minutes} min); será usado o "
+            "máximo permitido."
         )
     user_skus = [
         s for s in snapshot.skus if s.applies_to == "User" and s.capability_status == "Enabled"

@@ -3,7 +3,7 @@
 {% block content %}
 <h1>Novos colaboradores da minha equipe</h1>
 {% if erro %}<div class="alerta alerta-erro" role="alert">{{ erro }}</div>{% endif %}
-<p class="ajuda">No dia da admissão, gere aqui o <strong>acesso inicial</strong> (Temporary Access Pass) e entregue-o pessoalmente ao colaborador. Com ele, o colaborador entra pela primeira vez e cadastra a senha e o MFA.</p>
+<p class="ajuda">No dia da admissão, gere aqui o <strong>código de acesso inicial</strong> e entregue-o pessoalmente ao colaborador. Com ele, o colaborador entra pela primeira vez e cadastra a senha e o MFA.</p>
 <div class="rolagem">
 <table class="tabela">
   <thead><tr><th>Colaborador</th><th>Login</th><th>Admissão</th><th>Status</th><th></th></tr></thead>
@@ -11,7 +11,7 @@
     {% for r in itens %}
     <tr>
       <td>{{ r.conta.display_name }}</td>
-      <td><code class="pequeno">{{ r.conta.user_principal_name }}</code></td>
+      <td><span class="login">{{ r.conta.user_principal_name }}</span></td>
       <td>{{ r.data_admissao.strftime("%d/%m/%Y") }}</td>
       <td><span class="status-sol st-{{ r.status }}">{{ r.status_label }}</span></td>
       <td>

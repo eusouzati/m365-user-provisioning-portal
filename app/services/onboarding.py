@@ -75,9 +75,11 @@ def build_review(
     dominio = settings.m365_default_domain.strip().lower()
     verificados = {d.name.lower() for d in directory.domains() if d.is_verified}
     if not dominio:
-        erros.append("M365_DEFAULT_DOMAIN não está configurado. Fale com o administrador.")
+        erros.append(
+            "O domínio de e-mail do portal não está configurado. Fale com o administrador."
+        )
     elif dominio not in verificados:
-        erros.append(f"O domínio '{dominio}' não está verificado no tenant.")
+        erros.append(f"O domínio '{dominio}' não está verificado no Microsoft 365 da organização.")
 
     # Data de admissão
     minimo = hoje - timedelta(days=settings.hire_date_past_days)
@@ -113,7 +115,7 @@ def build_review(
 
     # Matrícula
     if graph.find_users_by_employee_id(form.matricula):
-        erros.append(f"A matrícula {form.matricula} já pertence a outro usuário do tenant.")
+        erros.append(f"A matrícula {form.matricula} já pertence a outro usuário do Microsoft 365.")
     elif outra := (reserved_employee_ids or {}).get(form.matricula):
         erros.append(f"A matrícula {form.matricula} já está na solicitação {outra}, em andamento.")
 
@@ -141,8 +143,8 @@ def build_review(
     assert names and perfil and gestor  # noqa: S101 — garantido pelas validações acima
     if names.renamed:
         avisos.append(
-            f"O login {names.base_local_part}@{dominio} já está em uso (no tenant ou em outra "
-            f"solicitação em andamento); será usado {names.user_principal_name}."
+            f"O login {names.base_local_part}@{dominio} já está em uso (no Microsoft 365 ou em "
+            f"outra solicitação em andamento); será usado {names.user_principal_name}."
         )
 
     tem_licenca = bool(perfil.grupo_licenca or perfil.sku_licenca)

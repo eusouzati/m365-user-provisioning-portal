@@ -14,7 +14,7 @@ import logging
 from app.auth import Principal
 from app.config import Settings
 from app.core.workflow import ProvisioningRequest, note, offboarded_ids
-from app.graph.errors import GraphError
+from app.graph.errors import GraphError, mensagem_usuario
 from app.graph.service import GraphService
 from app.graph.writer import GraphWriter
 from app.services.requests_flow import pessoa
@@ -49,8 +49,8 @@ def tap_lifetime(settings: Settings, graph: GraphService) -> int:
     policy = graph.get_tap_policy()
     if not policy or not policy.enabled:
         raise AccessError(
-            "A política de Temporary Access Pass está desabilitada no tenant. "
-            "Peça ao administrador para habilitá-la."
+            "O acesso inicial por código temporário está desativado no Microsoft 365 da "
+            "organização. Peça ao administrador para habilitá-lo."
         )
     minutos = settings.tap_lifetime_minutes
     if policy.max_lifetime_minutes:
@@ -59,24 +59,25 @@ def tap_lifetime(settings: Settings, graph: GraphService) -> int:
 
 
 def _tap_error_message(exc: GraphError) -> str:
-    """Mensagem útil ao gestor, com o motivo informado pelo Microsoft Graph (nunca o código)."""
+    """Mensagem simples ao gestor; a orientação técnica vai para o log (nunca o código)."""
     if exc.status == 403:
-        return (
-            "O portal não tem permissão para gerar o acesso inicial "
-            "(UserAuthenticationMethod.ReadWrite.All). Peça ao administrador para executar "
-            "Set-GraphPermissions.ps1 -Nivel ciclo-de-vida e reiniciar o App Service. "
-            f"Detalhe: {exc}"
+        logger.warning(
+            "TAP 403: conceda UserAuthenticationMethod.ReadWrite.All "
+            "(Set-GraphPermissions.ps1 -Nivel ciclo-de-vida) e reinicie o App Service: %s",
+            exc,
         )
+        return mensagem_usuario(exc, "gerar o acesso inicial")
     if 400 <= exc.status < 500:
-        return (
-            "O Microsoft 365 recusou o acesso inicial. Verifique se a política de "
-            "Temporary Access Pass está habilitada e inclui este usuário (Entra ID → "
-            f"Métodos de autenticação → Temporary Access Pass). Detalhe: {exc}"
+        logger.warning(
+            "TAP recusado: confira a política Temporary Access Pass (Entra ID → Métodos de "
+            "autenticação) e se ela inclui o usuário: %s",
+            exc,
         )
-    return (
-        "Não foi possível gerar o acesso inicial agora. Tente novamente em instantes. "
-        f"Detalhe: {exc}"
-    )
+        return (
+            "O Microsoft 365 recusou o código de acesso para este colaborador. Peça ao "
+            f"administrador para conferir a política de acesso temporário (código {exc.status})."
+        )
+    return "Não foi possível gerar o acesso inicial agora. Tente novamente em instantes."
 
 
 def generate_initial_access(
@@ -94,9 +95,11 @@ def generate_initial_access(
     if req.object_id.lower() in offboarded_ids(storage.list_requests(limit=1000)):
         raise AccessError("Este colaborador está em desligamento: o acesso inicial não é gerado.")
     if req.status != "ativa":
-        raise AccessError("A conta ainda não foi ativada. O acesso inicial fica disponível no D0.")
+        raise AccessError(
+            "A conta ainda não foi ativada. O acesso inicial fica disponível no dia da admissão."
+        )
     if writer.dry_run:
-        raise AccessError("DRY_RUN ativo: nenhum acesso inicial é gerado.")
+        raise AccessError("Modo simulação ativo: nenhum acesso inicial é gerado.")
     minutos = tap_lifetime(settings, graph)
     try:
         codigo = writer.create_temporary_access_pass(req.object_id, minutos)
@@ -106,7 +109,7 @@ def generate_initial_access(
     note(
         req,
         pessoa(principal),
-        f"Acesso inicial (TAP) gerado pelo gestor — uso único, válido por {minutos} min.",
+        f"Acesso inicial gerado pelo gestor — uso único, válido por {minutos} min.",
     )
     storage.update_request(req)
     logger.info("TAP gerado para %s pelo gestor %s", req.id, principal.object_id)

@@ -1,4 +1,4 @@
-"""Área do Administrador: capacidades do tenant e perfis de onboarding."""
+"""Área do Administrador: recursos do Microsoft 365 e perfis de onboarding."""
 
 from __future__ import annotations
 
@@ -40,10 +40,10 @@ AdminDep = Depends(require_roles(Roles.ADMINISTRADOR))
 def _graph_error_message(exc: GraphError) -> str:
     if isinstance(exc, GraphPermissionError):
         return (
-            "A identidade do portal não tem permissão de leitura no Microsoft Graph. "
-            "Rode scripts/Set-GraphPermissions.ps1 e aguarde alguns minutos."
+            "O portal ainda não tem permissão para ler os dados do Microsoft 365 "
+            "(usuários, grupos e licenças)."
         )
-    return "Não foi possível consultar o Microsoft Graph agora. Tente novamente em instantes."
+    return "Não foi possível consultar o Microsoft 365 agora. Tente novamente em instantes."
 
 
 def _render(

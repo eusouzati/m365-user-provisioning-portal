@@ -43,4 +43,4 @@ def test_pagina_inicial_em_portugues(client):  # modo dev: usuário simulado
     resp = client.get("/")
     assert resp.status_code == 200
     assert 'lang="pt-BR"' in resp.text
-    assert "DRY_RUN" in resp.text
+    assert "Simulação" in resp.text

@@ -360,7 +360,7 @@
   button[disabled], .botao[aria-busy="true"] { opacity: .6; cursor: progress; }
 
   /* --------------------------------------------------------------- painéis */
-  .painel, .aviso {
+  .painel, .aviso:not(.status) {
     background: var(--superficie);
     border: 1px solid var(--borda);
     border-radius: var(--raio-g);
@@ -369,7 +369,7 @@
     box-shadow: var(--sombra-1);
     > :last-child { margin-bottom: 0; }
   }
-  .aviso { color: var(--texto-2); }
+  .aviso:not(.status) { color: var(--texto-2); }
   .painel > h2:first-child { display: flex; align-items: center; gap: 8px; }
   .painel:has(> .tabela) { overflow-x: auto; }
   .espaco { margin-top: 24px; }
@@ -421,6 +421,25 @@
     --icone-alerta: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m9 9 6 6M15 9l-6 6'/%3E%3C/svg%3E");
   }
   .ajuda { font-size: 13px; color: var(--texto-3); }
+  .login { overflow-wrap: anywhere; }
+  .tabela .login { white-space: nowrap; color: var(--texto-2); }
+
+  /* informações técnicas: recolhidas por padrão, para quem administra */
+  details.tecnico {
+    margin: 12px 0 0; font-size: 13px; color: var(--texto-2);
+    border: 1px dashed var(--borda-forte); border-radius: var(--raio);
+    summary {
+      cursor: pointer; padding: 8px 12px; font-weight: 600; color: var(--texto-2);
+      list-style: none; display: flex; align-items: center; gap: 8px;
+      &::-webkit-details-marker { display: none; }
+      &::before { content: "›"; font-size: 16px; line-height: 1; transition: rotate var(--transicao); }
+      &:hover { color: var(--texto); }
+    }
+    &[open] summary::before { rotate: 90deg; }
+    > :not(summary) { margin: 0 12px 10px; }
+    ul { padding-left: 18px; }
+  }
+  .alerta + details.tecnico { margin: -8px 0 16px; }
 
   /* --------------------------------------------------- selos de status */
   .status-sol, .etapa, .tag {
@@ -476,6 +495,7 @@
     tbody tr:last-child td { border-bottom: 0; }
     tbody td[colspan] { text-align: center; color: var(--texto-3); padding: 28px 12px; }
     tbody tr:has(td[colspan]):hover { background: none; }
+    tbody th { position: static; background: none; font-size: 14px; font-weight: 500; color: var(--texto-2); width: 40%; }
     .num { text-align: right; font-variant-numeric: tabular-nums; }
     .zerado { color: var(--erro-texto); font-weight: 600; }
     td a code { color: var(--marca); background: var(--marca-suave); }
@@ -484,6 +504,8 @@
   }
   .painel .tabela {
     th { background: none; border-bottom-color: var(--borda-forte); }
+    tbody th { border-bottom-color: var(--borda); }
+    tbody tr:last-child th { border-bottom: 0; }
     th:first-child, td:first-child { padding-left: 0; }
     th:last-child, td:last-child { padding-right: 0; }
     tbody tr:hover { background: none; }
@@ -736,7 +758,7 @@
     .grade { grid-template-columns: 1fr; dt { border-bottom: 0; padding-bottom: 0; } dd { padding-top: 2px; } }
     .formulario { padding: 16px; }
     .formulario .linha, .formulario .linha.tres { grid-template-columns: 1fr; }
-    .painel, .aviso { padding: 16px; }
+    .painel, .aviso:not(.status) { padding: 16px; }
     .boas-vindas { padding: 20px; }
     .titulo-linha .acoes { width: 100%; }
   }

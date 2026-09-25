@@ -8,7 +8,7 @@
   <h2>Colaborador</h2>
   <dl class="grade">
     <dt>Nome</dt><dd>{{ r.user.display_name }}</dd>
-    <dt>UPN (login)</dt><dd><code>{{ r.user.user_principal_name }}</code></dd>
+    <dt>Login</dt><dd><span class="login">{{ r.user.user_principal_name }}</span></dd>
     {% if r.user.employee_id %}<dt>Matrícula</dt><dd>{{ r.user.employee_id }}</dd>{% endif %}
     {% if r.user.job_title %}<dt>Cargo</dt><dd>{{ r.user.job_title }}</dd>{% endif %}
     {% if r.user.department %}<dt>Departamento</dt><dd>{{ r.user.department }}</dd>{% endif %}
@@ -34,11 +34,11 @@
   <ol class="linha-tempo">
     <li><strong>Envio:</strong> a solicitação aguarda aprovação de outra pessoa.</li>
     <li><strong>{% if r.bloqueio_em %}{{ r.bloqueio_em.strftime("%d/%m/%Y às %H:%M") }}{% else %}Logo após a aprovação{% endif %}:</strong> conta bloqueada, sessões encerradas, data de desligamento registrada e remoção dos grupos e licenças.</li>
-    <li><strong>Depois:</strong> a conta permanece <em>bloqueada</em> no Entra ID (não é excluída).</li>
+    <li><strong>Depois:</strong> a conta permanece <em>bloqueada</em> no Microsoft 365 (não é excluída).</li>
   </ol>
 </section>
 
-{% if settings.dry_run %}<div class="alerta alerta-aviso"><strong>DRY_RUN ativo.</strong> Nada será alterado no Microsoft 365.</div>{% endif %}
+{% if settings.dry_run %}<div class="alerta alerta-aviso"><strong>Modo simulação.</strong> Nada será alterado no Microsoft 365.</div>{% endif %}
 
 <div class="acoes">
   <form method="post" action="/desligamentos/enviar" data-envio-unico>{% include "_hidden_form.html" %}<button class="botao perigo" type="submit">Enviar pedido de desligamento</button></form>

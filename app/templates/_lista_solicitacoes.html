@@ -1,13 +1,13 @@
 <div class="rolagem">
 <table class="tabela">
-  <thead><tr><th>Solicitação</th><th>Data</th><th>Colaborador</th><th>UPN</th><th>Tipo</th><th>Data efetiva</th>{% if mostrar_solicitante %}<th>Solicitante</th>{% endif %}<th>Status</th></tr></thead>
+  <thead><tr><th>Solicitação</th><th>Data</th><th>Colaborador</th><th>Login</th><th>Tipo</th><th>Data efetiva</th>{% if mostrar_solicitante %}<th>Solicitante</th>{% endif %}<th>Status</th></tr></thead>
   <tbody>
     {% for r in itens %}
     <tr>
       <td><a href="/solicitacoes/{{ r.id }}"><code>{{ r.id }}</code></a></td>
       <td>{{ r.criado_em|data_local }}</td>
       <td>{{ r.conta.display_name }}</td>
-      <td><code class="pequeno">{{ r.conta.user_principal_name }}</code></td>
+      <td><span class="login">{{ r.conta.user_principal_name }}</span></td>
       <td><span class="tipo tipo-{{ r.tipo }}">{{ r.tipo_label }}</span></td>
       <td>{{ r.data_efetiva.strftime("%d/%m/%Y") if r.data_efetiva else "—" }}</td>
       {% if mostrar_solicitante %}<td>{{ r.solicitante.nome }}</td>{% endif %}

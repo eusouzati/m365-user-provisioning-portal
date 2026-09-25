@@ -100,8 +100,8 @@ EtapaStatus = Literal["pendente", "ok", "falhou", "simulado", "manual"]
 ETAPA_LABELS: dict[str, str] = {
     "criar_usuario": "Criar usuário (desativado, sem licença)",
     "definir_gestor": "Definir gestor",
-    "licenca": "Atribuir licença (D-1)",
-    "ativar": "Ativar a conta (D0)",
+    "licenca": "Atribuir licença (véspera da admissão)",
+    "ativar": "Ativar a conta (dia da admissão)",
     # Desligamento (Sprint 8)
     "bloquear": "Bloquear a conta",
     "revogar_sessoes": "Revogar as sessões ativas",
@@ -116,7 +116,7 @@ ETAPA_STATUS_LABELS: dict[str, str] = {
     "pendente": "Pendente",
     "ok": "Concluída",
     "falhou": "Falhou",
-    "simulado": "Simulada (DRY_RUN)",
+    "simulado": "Simulada",
     "manual": "Ação manual",
 }
 
