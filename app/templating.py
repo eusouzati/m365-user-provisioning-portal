@@ -7,6 +7,7 @@ from fastapi.templating import Jinja2Templates
 from app import __version__
 from app.auth import Roles
 from app.core.workflow import ETAPA_STATUS_LABELS, STATUS_LABELS
+from app.icons import icone
 
 templates = Jinja2Templates(directory=str(Path(__file__).resolve().parent / "templates"))
 templates.env.globals.update(version=__version__, Roles=Roles)
@@ -40,3 +41,16 @@ templates.env.filters["data_local"] = _data_local
 templates.env.filters["data_iso_local"] = _data_iso_local
 templates.env.globals["status_labels"] = STATUS_LABELS
 templates.env.globals["etapa_labels"] = ETAPA_STATUS_LABELS
+
+
+def _iniciais(nome: str) -> str:
+    """Iniciais para o avatar ("Auto Silva" → "AS")."""
+    partes = [p for p in (nome or "").split() if p[:1].isalnum()]
+    if not partes:
+        return "?"
+    letras = partes[0][0] + (partes[-1][0] if len(partes) > 1 else "")
+    return letras.upper()
+
+
+templates.env.globals["icone"] = icone
+templates.env.globals["iniciais"] = _iniciais

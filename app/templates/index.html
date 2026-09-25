@@ -1,28 +1,43 @@
 {% extends "base.html" %}
 {% block content %}
-<h1>Olá, {{ principal.name }}</h1>
+<section class="boas-vindas">
+  <h1>Olá, {{ principal.name }}</h1>
+  {% if principal.portal_roles %}
+  <p>Crie e desligue contas do Microsoft 365 a partir das solicitações do RH, com aprovação e trilha de auditoria.</p>
+  <ul class="chips" aria-label="Seus papéis neste portal">
+    {% for label in principal.role_labels %}<li class="chip">{{ icone("escudo") }}{{ label }}</li>{% endfor %}
+  </ul>
+  {% if principal.has_any_role(Roles.SOLICITANTE) %}
+  <div class="atalhos">
+    <a class="botao" href="/solicitacoes/novo">{{ icone("usuario_novo") }}Novo colaborador</a>
+    <a class="botao secundario" href="/desligamentos/novo">{{ icone("usuario_sair") }}Desligamento</a>
+  </div>
+  {% endif %}
+  {% else %}
+  <p>Bem-vindo ao {{ settings.app_name }}.</p>
+  {% endif %}
+</section>
+
 {% if equipe_ativa %}<div class="alerta alerta-aviso"><a href="/equipe">{{ equipe_ativa }} novo(s) colaborador(es) da sua equipe começa(m) hoje: gere o acesso inicial.</a></div>{% endif %}
 
 {% if principal.portal_roles %}
-<p>Seus papéis neste portal:</p>
-<ul class="papeis">
-  {% for label in principal.role_labels %}<li>{{ label }}</li>{% endfor %}
-</ul>
 {% if pendentes %}<div class="alerta alerta-aviso"><a href="/aprovacoes">{{ pendentes }} solicitação(ões) aguardando sua aprovação.</a></div>{% endif %}
 {% if minhas %}<div class="alerta alerta-ok"><a href="/solicitacoes">Você tem {{ minhas }} solicitação(ões) em andamento.</a></div>{% endif %}
+<h2 class="secao-titulo">Acesso rápido</h2>
 <div class="cartoes">
   {% if principal.has_any_role(Roles.SOLICITANTE) %}
-  <a class="cartao" href="/solicitacoes"><strong>Solicitações</strong><span>Pedir a criação ou o desligamento de colaboradores.</span></a>
+  <a class="cartao" href="/solicitacoes"><span class="cartao-icone">{{ icone("solicitacoes") }}</span><strong>Solicitações <span class="cartao-seta">{{ icone("seta") }}</span></strong><span>Pedir a criação ou o desligamento de colaboradores.</span></a>
   {% endif %}
   {% if principal.has_any_role(Roles.APROVADOR) %}
-  <a class="cartao" href="/aprovacoes"><strong>Aprovações</strong><span>Aprovar ou rejeitar solicitações do RH.</span></a>
+  <a class="cartao" href="/aprovacoes"><span class="cartao-icone">{{ icone("aprovacoes") }}</span><strong>Aprovações <span class="cartao-seta">{{ icone("seta") }}</span></strong><span>Aprovar ou rejeitar solicitações do RH.</span></a>
   {% endif %}
+  <a class="cartao" href="/equipe"><span class="cartao-icone">{{ icone("equipe") }}</span><strong>Minha equipe <span class="cartao-seta">{{ icone("seta") }}</span></strong><span>Novos colaboradores e acesso inicial.</span></a>
   {% if principal.has_any_role(Roles.ADMINISTRADOR) %}
-  <a class="cartao" href="/admin/painel"><strong>Administração</strong><span>Painel, auditoria, perfis de onboarding e privacidade.</span></a>
+  <a class="cartao" href="/admin/painel"><span class="cartao-icone">{{ icone("admin") }}</span><strong>Administração <span class="cartao-seta">{{ icone("seta") }}</span></strong><span>Painel, auditoria, perfis de onboarding e privacidade.</span></a>
   {% endif %}
 </div>
 {% elif equipe_total %}
-<div class="cartoes"><a class="cartao" href="/equipe"><strong>Minha equipe</strong><span>Novos colaboradores e acesso inicial.</span></a></div>
+<div class="cartoes"><a class="cartao" href="/equipe"><span class="cartao-icone">{{ icone("equipe") }}</span><strong>Minha equipe <span class="cartao-seta">{{ icone("seta") }}</span></strong><span>Novos colaboradores e acesso inicial.</span></a></div>
 {% else %}
 <div class="aviso">
   <p>Você está autenticado, mas ainda não possui papel neste portal.</p>

@@ -3,37 +3,81 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}{{ settings.app_name }}{% endblock %}</title>
+  {# Tema e menu recolhido aplicados antes da pintura (evita "piscar"); CSP: script próprio, sem inline #}
+  <script src="{{ url_for('static', path='js/tema.js') }}"></script>
+  <link rel="icon" href="{{ url_for('static', path='img/icone.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', path='css/app.css') }}">
 </head>
-<body>
+{% set caminho = request.url.path %}
+<body class="{{ 'com-menu' if principal else 'sem-menu' }}">
+  <a class="pular" href="#conteudo">Pular para o conteúdo</a>
   <header class="topo">
-    <a class="marca" href="/">{{ settings.app_name }}</a>
+    {% if principal %}
+    <button class="botao-icone so-celular" type="button" data-abrir-menu aria-controls="menu-lateral" aria-expanded="false" aria-label="Abrir menu">{{ icone("menu") }}</button>
+    {% endif %}
+    <a class="marca" href="/">
+      <span class="marca-simbolo" aria-hidden="true">{{ icone("usuario_novo") }}</span>
+      <span class="marca-nome">{{ settings.app_name }}</span>
+    </a>
     <span class="selos">
       <span class="selo selo-{{ settings.environment }}">{{ settings.environment }}</span>
-      {% if settings.dry_run %}<span class="selo selo-dryrun">DRY_RUN</span>{% endif %}
+      {% if settings.dry_run %}<span class="selo selo-dryrun" title="Simulação: nada é alterado no Microsoft 365">DRY_RUN</span>{% endif %}
       {% if settings.auth_mode == "dev" %}<span class="selo selo-dev">login simulado</span>{% endif %}
     </span>
-    {% if principal %}
-    <span class="usuario">
-      <span class="usuario-nome">{{ principal.name }}</span>
-      {% if settings.auth_mode == "easyauth" %}<a href="/.auth/logout?post_logout_redirect_uri=/">Sair</a>{% endif %}
+    <span class="topo-acoes">
+      <button class="botao-icone" type="button" data-tema-alternar aria-label="Tema: automático" title="Tema: automático">
+        <span class="tema-auto">{{ icone("auto") }}</span><span class="tema-claro">{{ icone("sol") }}</span><span class="tema-escuro">{{ icone("lua") }}</span>
+      </button>
+      {% if principal %}
+      <button class="avatar-botao" type="button" popovertarget="menu-usuario" aria-label="Conta de {{ principal.name }}">
+        <span class="avatar" aria-hidden="true">{{ iniciais(principal.name) }}</span>
+        <span class="usuario-nome">{{ principal.name }}</span>
+      </button>
+      <div class="menu-usuario" id="menu-usuario" popover>
+        <div class="menu-usuario-cabeca">
+          <span class="avatar avatar-g" aria-hidden="true">{{ iniciais(principal.name) }}</span>
+          <span><strong>{{ principal.name }}</strong>
+            <span class="ajuda">{% for label in principal.role_labels %}{{ label }}{% if not loop.last %} · {% endif %}{% else %}Sem papel no portal{% endfor %}</span></span>
+        </div>
+        {% if settings.auth_mode == "easyauth" %}
+        <a class="menu-usuario-item" href="/.auth/logout?post_logout_redirect_uri=/">{{ icone("sair") }} Sair</a>
+        {% endif %}
+      </div>
+      {% endif %}
     </span>
-    {% endif %}
   </header>
-  {% if principal %}
-  <nav class="menu">
-    <a href="/">Início</a>
-    {% if principal.has_any_role(Roles.SOLICITANTE) %}<a href="/solicitacoes">Solicitações</a>{% endif %}
-    {% if principal.has_any_role(Roles.APROVADOR) %}<a href="/aprovacoes">Aprovações</a>{% endif %}
-    {% if principal.has_any_role(Roles.ADMINISTRADOR) %}<a href="/admin/painel">Administração</a>{% endif %}
-    <a href="/equipe">Minha equipe</a>
-  </nav>
-  {% endif %}
-  <main class="conteudo">
-    {% block content %}{% endblock %}
-  </main>
+
+  <div class="casca">
+    {% if principal %}
+    <nav class="lateral" id="menu-lateral" aria-label="Menu principal">
+      <ul>
+        <li><a href="/" {% if caminho == "/" %}aria-current="page"{% endif %} title="Início">{{ icone("inicio") }}<span>Início</span></a></li>
+        {% if principal.has_any_role(Roles.SOLICITANTE) %}
+        <li><a href="/solicitacoes" {% if caminho.startswith("/solicitacoes") or caminho.startswith("/desligamentos") %}aria-current="page"{% endif %} title="Solicitações">{{ icone("solicitacoes") }}<span>Solicitações</span></a></li>
+        {% endif %}
+        {% if principal.has_any_role(Roles.APROVADOR) %}
+        <li><a href="/aprovacoes" {% if caminho.startswith("/aprovacoes") %}aria-current="page"{% endif %} title="Aprovações">{{ icone("aprovacoes") }}<span>Aprovações</span></a></li>
+        {% endif %}
+        <li><a href="/equipe" {% if caminho.startswith("/equipe") %}aria-current="page"{% endif %} title="Minha equipe">{{ icone("equipe") }}<span>Minha equipe</span></a></li>
+        {% if principal.has_any_role(Roles.ADMINISTRADOR) %}
+        <li><a href="/admin/painel" {% if caminho.startswith("/admin") %}aria-current="page"{% endif %} title="Administração">{{ icone("admin") }}<span>Administração</span></a></li>
+        {% endif %}
+      </ul>
+      <button class="lateral-recolher so-desktop" type="button" data-recolher-menu aria-label="Recolher menu" title="Recolher menu">{{ icone("recolher") }}<span>Recolher</span></button>
+    </nav>
+    <div class="veu" data-fechar-menu hidden></div>
+    {% endif %}
+
+    <main class="conteudo" id="conteudo" tabindex="-1">
+      <div class="conteudo-interno">
+        {% block content %}{% endblock %}
+      </div>
+      <footer class="rodape">v{{ version }} · Software livre sob licença MIT{% if principal %} · <a href="/privacidade">Privacidade</a>{% endif %}</footer>
+    </main>
+  </div>
   <script src="{{ url_for('static', path='js/envio.js') }}" defer></script>
-  <footer class="rodape">v{{ version }} · Software livre sob licença MIT{% if principal %} · <a href="/privacidade">Privacidade</a>{% endif %}</footer>
+  <script src="{{ url_for('static', path='js/ui.js') }}" defer></script>
 </body>
 </html>
