@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Portal de Provisionamento de Usuários Microsoft 365 — Documentação</title>
+<meta name="author" content="Projeto m365-user-provisioning-portal (licença MIT)">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<!-- ================================================================ CAPA -->
+<section class="capa">
+  <div class="capa-marca">
+    <svg viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#fff" fill-opacity=".16"/><g fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13.5" cy="11.5" r="4.3"/><path d="M6.5 25c0-4.4 3.1-7.2 7-7.2 1.3 0 2.5.3 3.5.8"/><path d="M23 18.5v7M19.5 22h7"/></g></svg>
+    Projeto open source · licença MIT
+  </div>
+  <h1>Portal de Provisionamento de Usuários Microsoft 365</h1>
+  <p class="sub">Documentação completa: por que implantar, o que o portal faz, como ele protege a organização e como colocá-lo para funcionar no seu Microsoft 365 e na sua assinatura Azure.</p>
+  <div class="chips"><span>Admissão</span><span>Aprovação</span><span>Acesso inicial seguro</span><span>Desligamento</span><span>Auditoria</span><span>LGPD</span><span>Sem senhas nem segredos</span></div>
+  <div class="capa-rodape"><span>Versão do portal 0.11 · Setembro de 2026</span><span>github.com/eusouzati/m365-user-provisioning-portal</span></div>
+</section>
+
+<!-- ============================================================= SUMÁRIO -->
+<section class="sumario">
+  <h2>Sumário</h2>
+  <ol>
+    <li class="p">Parte I — Visão geral</li>
+    <li><span class="n">1</span><a href="#resumo">Resumo executivo</a><span class="pg" data-alvo="resumo"></span></li>
+    <li><span class="n">2</span><a href="#problema">O problema: entrada e saída de pessoas feitas à mão</a><span class="pg" data-alvo="problema"></span></li>
+    <li><span class="n">3</span><a href="#solucao">A solução em uma página</a><span class="pg" data-alvo="solucao"></span></li>
+    <li><span class="n">4</span><a href="#importancia">Por que implantar: benefícios e riscos evitados</a><span class="pg" data-alvo="importancia"></span></li>
+    <li><span class="n">5</span><a href="#papeis">Quem usa o portal</a><span class="pg" data-alvo="papeis"></span></li>
+    <li class="p">Parte II — Funcionalidades</li>
+    <li><span class="n">6</span><a href="#admissao">Admissão de um novo colaborador</a><span class="pg" data-alvo="admissao"></span></li>
+    <li><span class="n">7</span><a href="#aprovacao">Aprovação e segregação de funções</a><span class="pg" data-alvo="aprovacao"></span></li>
+    <li><span class="n">8</span><a href="#acesso">Primeiro acesso do colaborador</a><span class="pg" data-alvo="acesso"></span></li>
+    <li><span class="n">9</span><a href="#desligamento">Desligamento</a><span class="pg" data-alvo="desligamento"></span></li>
+    <li><span class="n">10</span><a href="#administracao">Administração, painel e perfis</a><span class="pg" data-alvo="administracao"></span></li>
+    <li><span class="n">11</span><a href="#auditoria">Auditoria e privacidade (LGPD)</a><span class="pg" data-alvo="auditoria"></span></li>
+    <li><span class="n">12</span><a href="#interface">Interface</a><span class="pg" data-alvo="interface"></span></li>
+    <li class="p">Parte III — Técnica</li>
+    <li><span class="n">13</span><a href="#arquitetura">Arquitetura</a><span class="pg" data-alvo="arquitetura"></span></li>
+    <li><span class="n">14</span><a href="#seguranca">Segurança</a><span class="pg" data-alvo="seguranca"></span></li>
+    <li><span class="n">15</span><a href="#permissoes">Permissões no Microsoft 365</a><span class="pg" data-alvo="permissoes"></span></li>
+    <li><span class="n">16</span><a href="#implantacao">Implantação passo a passo</a><span class="pg" data-alvo="implantacao"></span></li>
+    <li><span class="n">17</span><a href="#cicd">Publicação automática (GitHub Actions)</a><span class="pg" data-alvo="cicd"></span></li>
+    <li><span class="n">18</span><a href="#operacao">Operação e solução de problemas</a><span class="pg" data-alvo="operacao"></span></li>
+    <li><span class="n">19</span><a href="#configuracao">Configurações</a><span class="pg" data-alvo="configuracao"></span></li>
+    <li class="p">Apêndices</li>
+    <li><span class="n">A</span><a href="#glossario">Glossário</a><span class="pg" data-alvo="glossario"></span></li>
+    <li><span class="n">B</span><a href="#repositorio">Estrutura do repositório e licença</a><span class="pg" data-alvo="repositorio"></span></li>
+  </ol>
+</section>
+
+<!-- ====================================================== PARTE I -->
+<div class="parte" style="break-before:auto"><small>Parte I</small><span>Visão geral</span></div>
+
+<h2 id="resumo"><span class="num">1</span>Resumo executivo</h2>
+<p class="lead">O Portal de Provisionamento transforma a entrada e a saída de colaboradores no Microsoft 365 em um processo único, aprovado e registrado: o RH pede, outra pessoa aprova e o portal executa cada etapa no momento certo — sem senhas trafegando e sem acessos esquecidos.</p>
+<p>Em muitas empresas, criar a conta de quem está chegando e remover os acessos de quem está saindo depende de e-mails, planilhas e da memória de alguém da TI. Isso gera contas criadas antes da hora, senhas enviadas por mensagem, licenças pagas sem uso e ex-colaboradores com acesso depois do último dia. O portal resolve esses pontos com um fluxo padronizado:</p>
+<ul>
+  <li><strong>Admissão:</strong> a conta é criada <em>desativada</em> logo após a aprovação, recebe a licença só na véspera e é ativada no dia da admissão. O gestor gera um código de acesso de uso único, e o colaborador cadastra a própria senha e o MFA no primeiro acesso.</li>
+  <li><strong>Desligamento:</strong> no último dia, no horário definido, a conta é bloqueada, as sessões são encerradas e o colaborador sai dos grupos e das licenças. A conta nunca é excluída automaticamente.</li>
+  <li><strong>Controle:</strong> quem pede não aprova; cada ação fica na trilha de auditoria; os dados pessoais podem ser anonimizados depois de um prazo (LGPD).</li>
+</ul>
+<div class="numeros">
+  <div><b>0</b><span>senhas ou segredos guardados pelo portal</span></div>
+  <div><b>4</b><span>papéis com permissões separadas</span></div>
+  <div><b>1 h</b><span>intervalo máximo do agendador</span></div>
+  <div><b>R$ 0</b><span>de infraestrutura no laboratório (plano gratuito)</span></div>
+</div>
+<p>O projeto é <strong>open source (licença MIT)</strong> e genérico: cada organização implanta no próprio Microsoft 365 e na própria assinatura Azure. Nenhum dado de cliente fica no repositório.</p>
+
+<h2 id="problema"><span class="num">2</span>O problema: entrada e saída de pessoas feitas à mão</h2>
+<p>A conta no Microsoft 365 é a porta de entrada para e-mail, arquivos, Teams e, muitas vezes, para outros sistemas da empresa. Quando a criação e a remoção dessa conta são manuais, os mesmos problemas aparecem em quase toda organização:</p>
+<table>
+  <thead><tr><th>Situação comum</th><th>Consequência</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Conta criada e ativada dias antes da admissão</td><td>Uma conta válida, sem dono ativo, fica exposta a ataques; a licença já está sendo paga.</td></tr>
+    <tr><td class="k">Senha inicial enviada por e-mail ou mensagem</td><td>Qualquer pessoa com acesso à mensagem entra na conta antes do colaborador; o MFA ainda não existe.</td></tr>
+    <tr><td class="k">Pedido feito por e-mail ou planilha</td><td>Sem aprovação formal, sem histórico, com erros de digitação no nome e no login.</td></tr>
+    <tr><td class="k">Grupos e acessos escolhidos "de cabeça"</td><td>Cada novo colaborador recebe acessos diferentes para a mesma função; acessos a mais passam despercebidos.</td></tr>
+    <tr><td class="k">Desligamento depende de lembrar</td><td>Ex-colaboradores continuam com e-mail no celular, Teams aberto e acesso a arquivos depois do último dia.</td></tr>
+    <tr><td class="k">Nenhum registro de quem fez o quê</td><td>Em uma auditoria ou incidente não há como provar quem pediu, quem aprovou e quando a conta foi bloqueada.</td></tr>
+    <tr><td class="k">Dados pessoais guardados para sempre</td><td>Planilhas e e-mails com nome, matrícula e cargo ficam indefinidamente, contrariando a LGPD.</td></tr>
+  </tbody>
+</table>
+<div class="caixa aviso"><span class="t">Por que isso importa</span>Contas órfãs e acessos que não foram removidos estão entre as causas mais frequentes de incidentes de segurança. O desligamento é o momento mais sensível: a pessoa ainda conhece os sistemas e, sem um processo, pode continuar entrando.</div>
+
+<h2 id="solucao"><span class="num">3</span>A solução em uma página</h2>
+<p>O portal é um site interno, com login pela conta corporativa do Microsoft 365. Ele centraliza os pedidos do RH, a aprovação e a execução, que é feita automaticamente pelo próprio portal no Microsoft 365.</p>
+<figure>
+<svg viewBox="0 0 760 250" xmlns="http://www.w3.org/2000/svg" font-family="Inter" font-size="11">
+  <defs><marker id="s1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8aa4bf"/></marker></defs>
+  <g stroke="#8aa4bf" stroke-width="1.6" marker-end="url(#s1)"><path d="M112 70h28"/><path d="M252 70h28"/><path d="M392 70h28"/><path d="M532 70h28"/><path d="M646 110v38"/><path d="M560 190h-28"/><path d="M420 190h-28"/><path d="M280 190h-28"/></g>
+  <g><rect x="10" y="30" width="102" height="80" rx="10" fill="#eaf2fc" stroke="#b7d3f2"/><text x="61" y="58" text-anchor="middle" font-weight="700" fill="#0b3d6b">RH solicita</text><text x="61" y="76" text-anchor="middle" fill="#4a5360" font-size="9.5">dados, gestor</text><text x="61" y="90" text-anchor="middle" fill="#4a5360" font-size="9.5">e perfil</text></g>
+  <g><rect x="140" y="30" width="112" height="80" rx="10" fill="#eaf2fc" stroke="#b7d3f2"/><text x="196" y="58" text-anchor="middle" font-weight="700" fill="#0b3d6b">Aprovador decide</text><text x="196" y="76" text-anchor="middle" fill="#4a5360" font-size="9.5">outra pessoa;</text><text x="196" y="90" text-anchor="middle" fill="#4a5360" font-size="9.5">dados conferidos</text></g>
+  <g><rect x="280" y="30" width="112" height="80" rx="10" fill="#fff" stroke="#0f6cbd" stroke-width="1.4"/><text x="336" y="58" text-anchor="middle" font-weight="700" fill="#0b3d6b">Conta criada</text><text x="336" y="76" text-anchor="middle" fill="#4a5360" font-size="9.5">desativada, sem</text><text x="336" y="90" text-anchor="middle" fill="#4a5360" font-size="9.5">licença, com grupos</text></g>
+  <g><rect x="420" y="30" width="112" height="80" rx="10" fill="#fff" stroke="#0f6cbd" stroke-width="1.4"/><text x="476" y="58" text-anchor="middle" font-weight="700" fill="#0b3d6b">Véspera</text><text x="476" y="76" text-anchor="middle" fill="#4a5360" font-size="9.5">licença atribuída</text><text x="476" y="90" text-anchor="middle" fill="#4a5360" font-size="9.5">(e-mail preparado)</text></g>
+  <g><rect x="560" y="30" width="172" height="80" rx="10" fill="#fff" stroke="#0f6cbd" stroke-width="1.4"/><text x="646" y="58" text-anchor="middle" font-weight="700" fill="#0b3d6b">Dia da admissão</text><text x="646" y="76" text-anchor="middle" fill="#4a5360" font-size="9.5">conta ativada</text><text x="646" y="90" text-anchor="middle" fill="#4a5360" font-size="9.5">automaticamente</text></g>
+  <g><rect x="560" y="150" width="172" height="80" rx="10" fill="#eef8ee" stroke="#a9d8a9"/><text x="646" y="178" text-anchor="middle" font-weight="700" fill="#0e700e">Gestor gera o código</text><text x="646" y="196" text-anchor="middle" fill="#4a5360" font-size="9.5">uso único, exibido</text><text x="646" y="210" text-anchor="middle" fill="#4a5360" font-size="9.5">uma só vez</text></g>
+  <g><rect x="420" y="150" width="112" height="80" rx="10" fill="#eef8ee" stroke="#a9d8a9"/><text x="476" y="178" text-anchor="middle" font-weight="700" fill="#0e700e">1º acesso</text><text x="476" y="196" text-anchor="middle" fill="#4a5360" font-size="9.5">colaborador cria</text><text x="476" y="210" text-anchor="middle" fill="#4a5360" font-size="9.5">senha e MFA</text></g>
+  <g><rect x="280" y="150" width="112" height="80" rx="10" fill="#fff6e0" stroke="#eed193"/><text x="336" y="178" text-anchor="middle" font-weight="700" fill="#8a5a00">Último dia</text><text x="336" y="196" text-anchor="middle" fill="#4a5360" font-size="9.5">desligamento</text><text x="336" y="210" text-anchor="middle" fill="#4a5360" font-size="9.5">pedido e aprovado</text></g>
+  <g><rect x="140" y="150" width="112" height="80" rx="10" fill="#fdf1f2" stroke="#eeb2b7"/><text x="196" y="178" text-anchor="middle" font-weight="700" fill="#b10e1c">Bloqueio</text><text x="196" y="196" text-anchor="middle" fill="#4a5360" font-size="9.5">sessões encerradas,</text><text x="196" y="210" text-anchor="middle" fill="#4a5360" font-size="9.5">grupos e licença saem</text></g>
+  <g><rect x="10" y="150" width="102" height="80" rx="10" fill="#f4f6f9" stroke="#dfe3e8"/><text x="61" y="178" text-anchor="middle" font-weight="700" fill="#1b1f24">Tudo auditado</text><text x="61" y="196" text-anchor="middle" fill="#4a5360" font-size="9.5">quem, o quê</text><text x="61" y="210" text-anchor="middle" fill="#4a5360" font-size="9.5">e quando</text></g>
+  <path d="M140 190h-28" stroke="#8aa4bf" stroke-width="1.6" marker-end="url(#s1)"/>
+</svg>
+<figcaption><b>Figura 1.</b> Jornada completa de um colaborador no portal, da solicitação do RH ao bloqueio no último dia.</figcaption>
+</figure>
+<div class="grade3">
+  <div class="cartao"><h4><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 3.5 5 6.2v5.3c0 4.2 2.9 7.6 7 9 4.1-1.4 7-4.8 7-9V6.2Z"/></svg></span>Seguro por padrão</h4><p>Conta desativada até o dia certo, nenhum segredo guardado, MFA cadastrado pelo próprio colaborador.</p></div>
+  <div class="cartao"><h4><span class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="m8.5 12.3 2.4 2.4 4.6-5"/></svg></span>Com aprovação</h4><p>Quem pede não aprova. Os dados são conferidos de novo no Microsoft 365 no momento da decisão.</p></div>
+  <div class="cartao"><h4><span class="ic"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2.5"/><path d="M9 8h6M9 12h6M9 16h3.5"/></svg></span>Registrado</h4><p>Histórico em cada solicitação e trilha de auditoria somente de acréscimo, exportável para Excel.</p></div>
+</div>
+
+<h2 id="importancia" class="nova"><span class="num">4</span>Por que implantar: benefícios e riscos evitados</h2>
+<p class="lead">O portal não é só uma forma mais rápida de criar contas. Ele muda <em>quando</em> e <em>como</em> cada acesso existe, o que reduz riscos reais de segurança, de custo e de conformidade.</p>
+<table class="antes-depois">
+  <thead><tr><th>Tema</th><th>Sem o portal</th><th>Com o portal</th></tr></thead>
+  <tbody>
+    <tr><td>Conta antes da admissão</td><td>Ativa dias antes, com senha conhecida por terceiros</td><td>Existe, mas desativada; só é ativada no dia da admissão</td></tr>
+    <tr><td>Senha inicial</td><td>Definida pela TI e enviada por mensagem</td><td>Não existe: o gestor entrega um código de uso único e o colaborador cria a própria senha</td></tr>
+    <tr><td>MFA</td><td>Configurado "depois", quando alguém lembra</td><td>Cadastrado no primeiro acesso, com o código temporário</td></tr>
+    <tr><td>Licenças</td><td>Pagas desde a criação da conta</td><td>Atribuídas só na véspera da admissão e removidas no desligamento</td></tr>
+    <tr><td>Acessos por função</td><td>Escolhidos a cada pedido</td><td>Perfis de onboarding padronizados, validados pelo administrador</td></tr>
+    <tr><td>Desligamento</td><td>Depende de alguém lembrar; horário incerto</td><td>Agendado para o último dia, no horário definido, com sessões encerradas</td></tr>
+    <tr><td>Aprovação</td><td>Informal ou inexistente</td><td>Obrigatória, por outra pessoa, com comentário e histórico</td></tr>
+    <tr><td>Rastreabilidade</td><td>E-mails espalhados</td><td>Trilha de auditoria com quem, o quê e quando</td></tr>
+    <tr><td>LGPD</td><td>Dados pessoais guardados sem prazo</td><td>Retenção configurável, anonimização automática e aviso de privacidade</td></tr>
+  </tbody>
+</table>
+<h3>Benefícios por área</h3>
+<div class="grade2">
+  <div class="cartao"><h4>RH</h4><p>Pede admissões e desligamentos sozinho, em um formulário que valida os dados e mostra o login que será criado. Acompanha o andamento sem precisar cobrar a TI.</p></div>
+  <div class="cartao"><h4>TI e Segurança</h4><p>Deixa de digitar contas e de lembrar desligamentos. Aprova com um clique, com os dados conferidos no Microsoft 365. Sabe exatamente quais acessos cada perfil concede.</p></div>
+  <div class="cartao"><h4>Gestores</h4><p>Recebem o novo colaborador no primeiro dia com um código de acesso gerado por eles mesmos, na hora certa, sem depender da TI.</p></div>
+  <div class="cartao"><h4>Diretoria, auditoria e DPO</h4><p>Têm evidência de cada decisão (quem pediu, quem aprovou, quando foi executado), segregação de funções e política de retenção de dados pessoais.</p></div>
+</div>
+<h3>Custo</h3>
+<p>O portal roda em serviços simples do Azure. Em laboratório, o plano gratuito do App Service é suficiente e os demais recursos custam centavos por mês. Em produção, recomenda-se um plano pago básico (B1 ou superior) para ficar sempre disponível. Não há licença do portal: o código é livre. A economia com licenças do Microsoft 365, atribuídas só na véspera e removidas no desligamento, tende a superar o custo da infraestrutura.</p>
+
+<h2 id="papeis"><span class="num">5</span>Quem usa o portal</h2>
+<p>O acesso é controlado por <strong>papéis</strong> do Microsoft Entra ID, atribuídos a grupos. Para dar ou tirar acesso, basta incluir ou remover a pessoa do grupo correspondente — nada é configurado no portal.</p>
+<table>
+  <thead><tr><th>Papel</th><th>Quem normalmente é</th><th>O que pode fazer</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Solicitante</td><td>RH</td><td>Pedir admissões e desligamentos; acompanhar e cancelar os próprios pedidos.</td></tr>
+    <tr><td class="k">Aprovador</td><td>TI / Segurança</td><td>Aprovar ou rejeitar pedidos feitos por outras pessoas (com comentário obrigatório na rejeição).</td></tr>
+    <tr><td class="k">Administrador</td><td>Responsável pelo portal</td><td>Painel, todas as solicitações, perfis de onboarding, recursos do Microsoft 365, auditoria e privacidade; reprocessar etapas.</td></tr>
+    <tr><td class="k">Gestor</td><td>Qualquer gestor da empresa</td><td>Não é um papel: todo gestor registrado em uma admissão vê a sua equipe em <em>Minha equipe</em> e gera o código de acesso inicial.</td></tr>
+    <tr><td class="k">Agendador</td><td>O próprio sistema</td><td>Papel exclusivo da identidade do agendador (não de pessoas); executa licenças, ativações e desligamentos de hora em hora.</td></tr>
+  </tbody>
+</table>
+<div class="caixa info"><span class="t">Segregação de funções</span>Mesmo quem tem os papéis de Solicitante e Aprovador não consegue aprovar o próprio pedido. Ninguém pede, aprova ou cancela o próprio desligamento, e o colaborador em desligamento nem enxerga o pedido.</div>
+
+<!-- ====================================================== PARTE II -->
+<div class="parte"><small>Parte II</small><span>Funcionalidades</span></div>
+
+<h2 id="admissao" style="margin-top:0"><span class="num">6</span>Admissão de um novo colaborador</h2>
+<p>A página inicial mostra os papéis da pessoa, os atalhos para <em>Novo colaborador</em> e <em>Desligamento</em> e avisos do que precisa de atenção, como aprovações pendentes e colaboradores que começam hoje.</p>
+<figure><img src="img/01-inicio.jpg" alt="Página inicial do portal"><figcaption><b>Figura 2.</b> Página inicial com atalhos, avisos e acesso rápido às áreas do portal.</figcaption></figure>
+<h3>6.1 Formulário</h3>
+<p>O RH informa nome, sobrenome, matrícula, tipo de colaborador, cargo, departamento, local, data de admissão, perfil de onboarding e gestor. O gestor é escolhido por uma busca no diretório da empresa — não é digitado —, o que evita erros.</p>
+<figure class="estreita"><img src="img/02-novo.jpg" alt="Formulário de novo colaborador"><figcaption><b>Figura 3.</b> Formulário de novo colaborador. Os campos respeitam os limites do Microsoft 365 e a data de admissão tem janela permitida.</figcaption></figure>
+<h3>6.2 Revisão antes de enviar</h3>
+<p>Antes de enviar, o portal mostra exatamente o que será criado: nome de exibição, login, e-mail, grupos, licença e a linha do tempo. Nesse momento ele já:</p>
+<ul>
+  <li><strong>gera o login</strong> seguindo o padrão da empresa (por exemplo, <code>nome.sobrenome</code>), remove acentos e trata partículas como "da" e "dos";</li>
+  <li><strong>resolve colisões:</strong> se <code>joao.silva</code> já existe em um usuário, grupo, e-mail ou apelido, sugere <code>joao.silva2</code>;</li>
+  <li><strong>confere a matrícula</strong> contra o Microsoft 365 e contra outras solicitações em andamento;</li>
+  <li><strong>valida o perfil e o gestor</strong> (o gestor precisa estar ativo).</li>
+</ul>
+<figure class="estreita"><img src="img/03-revisao.jpg" alt="Revisão da criação do usuário"><figcaption><b>Figura 4.</b> Tela de revisão: o RH confere login, e-mail, acessos e datas antes de enviar.</figcaption></figure>
+<h3>6.3 Linha do tempo da conta</h3>
+<table>
+  <thead><tr><th>Quando</th><th>O que acontece</th><th>Situação</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Envio</td><td>A solicitação recebe um número (<code>REQ-AAAAMMDD-NNNN</code>) e aguarda aprovação.</td><td><span class="selo am">Aguardando aprovação</span></td></tr>
+    <tr><td class="k">Aprovação</td><td>Conta criada <strong>desativada</strong>, sem licença, com gestor, matrícula, data de admissão e grupos de acesso do perfil. A senha gerada é aleatória e descartada: ninguém a conhece.</td><td><span class="selo az">Conta criada</span></td></tr>
+    <tr><td class="k">Véspera da admissão</td><td>A conta entra no grupo de licença (ou recebe a licença direta). A caixa de e-mail é preparada.</td><td><span class="selo az">Licenciada</span></td></tr>
+    <tr><td class="k">Dia da admissão</td><td>A conta é <strong>ativada</strong>. O gestor já pode gerar o código de acesso inicial.</td><td><span class="selo vd">Ativa</span></td></tr>
+  </tbody>
+</table>
+<p>O agendador roda de hora em hora e é <strong>idempotente</strong>: rodar de novo não duplica nada. Se uma etapa falhar (por exemplo, falta de licenças), a solicitação fica em <span class="selo vm">Falha parcial</span>, o que já foi feito é mantido e a etapa é tentada de novo na próxima hora.</p>
+<figure class="estreita"><img src="img/05-detalhe-admissao.jpg" alt="Detalhe de uma admissão concluída"><figcaption><b>Figura 5.</b> Detalhe de uma admissão concluída: dados do colaborador, cada etapa executada e o histórico com quem fez o quê.</figcaption></figure>
+
+<h2 id="aprovacao"><span class="num">7</span>Aprovação e segregação de funções</h2>
+<p>A fila de aprovação mostra o que aguarda decisão e o que foi decidido recentemente. Pedidos feitos pelo próprio aprovador aparecem na lista, mas não podem ser aprovados por ele.</p>
+<figure><img src="img/04-aprovacoes.jpg" alt="Fila de aprovações"><figcaption><b>Figura 6.</b> Fila de aprovações com admissões e desligamentos.</figcaption></figure>
+<ul>
+  <li><strong>Revalidação na aprovação:</strong> perfil, gestor, matrícula e login são conferidos de novo no Microsoft 365. Se o login ficou indisponível entre o pedido e a aprovação, é recalculado e a mudança fica registrada.</li>
+  <li><strong>Rejeição com motivo:</strong> o comentário é obrigatório e aparece no histórico para o RH corrigir.</li>
+  <li><strong>Sem duplicidade:</strong> duplo clique e reenvios levam à mesma solicitação; decisões simultâneas não se sobrepõem.</li>
+  <li><strong>Reservas:</strong> o login e a matrícula de uma solicitação em andamento não podem ser usados por outra.</li>
+  <li><strong>Limite diário:</strong> por proteção, o portal cria no máximo um número configurável de contas por dia (padrão: 20).</li>
+</ul>
+
+<h2 id="acesso"><span class="num">8</span>Primeiro acesso do colaborador</h2>
+<p>No dia da admissão, o gestor entra em <strong>Minha equipe</strong> e clica em <em>Gerar acesso inicial</em>. O portal cria no Microsoft 365 um <strong>código de acesso temporário</strong> (Temporary Access Pass), de uso único e com validade limitada. O código:</p>
+<ul>
+  <li>é exibido <strong>uma única vez</strong>, na tela do gestor, e nunca é gravado, registrado em log nem enviado por e-mail;</li>
+  <li>só pode ser gerado pelo <strong>gestor registrado</strong> na solicitação e só para contas já ativadas;</li>
+  <li>não pode ser gerado para quem tem desligamento aprovado.</li>
+</ul>
+<div class="grade2">
+  <figure style="margin:0"><img src="img/06-equipe.jpg" alt="Minha equipe"><figcaption><b>Figura 7.</b> Minha equipe: novos colaboradores do gestor e o botão para gerar o acesso.</figcaption></figure>
+  <figure style="margin:0"><img src="img/07-acesso-inicial.jpg" alt="Código de acesso inicial"><figcaption><b>Figura 8.</b> Código de acesso exibido uma só vez, com as instruções de entrega (código fictício).</figcaption></figure>
+</div>
+<p>O colaborador acessa <code>mysignins.microsoft.com/security-info</code>, informa o login corporativo, usa o código quando o sistema pedir a senha e, nessa primeira entrada, cadastra o MFA (Microsoft Authenticator) e/ou o Windows Hello. A partir daí, ninguém além dele conhece suas credenciais.</p>
+
+<h2 id="desligamento"><span class="num">9</span>Desligamento</h2>
+<p>O RH escolhe o colaborador na busca do diretório (inclusive contas já desativadas), informa o último dia de trabalho e, se necessário, marca <em>bloquear imediatamente</em>. A revisão mostra os acessos atuais que serão removidos e as ações que precisarão ser feitas à mão.</p>
+<figure class="estreita"><img src="img/08-desligamento.jpg" alt="Desligamento agendado"><figcaption><b>Figura 9.</b> Desligamento aprovado e agendado para o último dia, com as etapas que serão executadas.</figcaption></figure>
+<h3>Etapas executadas no horário do bloqueio (padrão: 18h do último dia)</h3>
+<ol class="passos">
+  <li><strong>Bloquear a conta</strong> — sempre a primeira etapa.</li>
+  <li><strong>Encerrar as sessões ativas</strong> — Outlook, Teams e navegadores deixam de funcionar em poucos minutos.</li>
+  <li><strong>Registrar a data de desligamento</strong> no Microsoft 365.</li>
+  <li><strong>Remover dos grupos</strong>, inclusive o de licença (a licença sai junto). A lista é conferida no momento do bloqueio, não no pedido.</li>
+  <li><strong>Remover licenças diretas</strong>, quando o portal está configurado para atribuí-las assim.</li>
+</ol>
+<h3>O que fica como ação manual</h3>
+<p>Algumas situações não podem ou não devem ser feitas automaticamente. O portal as registra na solicitação como <span class="selo am">Ação manual</span>:</p>
+<table>
+  <thead><tr><th>Situação</th><th>Por quê</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Grupos dinâmicos</td><td>A participação vem de uma regra; ajuste a regra ou os dados do usuário.</td></tr>
+    <tr><td class="k">Listas de distribuição</td><td>São gerenciadas pelo Exchange.</td></tr>
+    <tr><td class="k">Grupos ou funções administrativas</td><td>Exigem privilégio de administrador, que o portal propositalmente não recebe.</td></tr>
+    <tr><td class="k">Subordinados diretos</td><td>O portal não altera o gestor de outras pessoas; o RH define o novo gestor.</td></tr>
+  </tbody>
+</table>
+<div class="caixa ok"><span class="t">A conta nunca é excluída</span>Ela fica bloqueada, preservando e-mails, arquivos e evidências para retenção, auditoria e LGPD. Se a pessoa não comparecer no primeiro dia, aprovar o desligamento encerra a admissão, e a conta nunca é ativada.</div>
+
+<h2 id="administracao"><span class="num">10</span>Administração, painel e perfis</h2>
+<h3>Painel</h3>
+<p>Reúne o que o administrador precisa ver todos os dias: pedidos aguardando aprovação, em andamento e com falha, admissões e desligamentos dos próximos 7 dias, a última execução do agendador, as licenças disponíveis (com alerta quando estão acabando) e a atividade recente.</p>
+<figure class="estreita"><img src="img/09-painel.jpg" alt="Painel do administrador"><figcaption><b>Figura 10.</b> Painel do administrador.</figcaption></figure>
+<h3>Todas as solicitações</h3>
+<p>Lista completa com filtros por situação, o botão <em>Executar ciclo de vida agora</em> (que faz na hora o que o agendador faria na próxima execução) e, em cada solicitação com falha, o botão <em>Reprocessar etapas pendentes</em>.</p>
+<figure><img src="img/11-solicitacoes.jpg" alt="Todas as solicitações"><figcaption><b>Figura 11.</b> Todas as solicitações, com tipo, data efetiva e situação.</figcaption></figure>
+<h3>Perfis de onboarding</h3>
+<p>Cada perfil define os <strong>grupos de acesso</strong> e a <strong>licença</strong> de uma função (por exemplo, "Financeiro — Funcionário"). O RH só escolhe o perfil; nunca escolhe grupos. Ao salvar um perfil, o portal confere no Microsoft 365 que cada grupo existe, é de segurança, não é dinâmico, não concede funções administrativas e não é um grupo de papel do próprio portal.</p>
+<figure><img src="img/12-perfis.jpg" alt="Perfis de onboarding"><figcaption><b>Figura 12.</b> Perfis de onboarding: grupos de acesso e licença de cada função.</figcaption></figure>
+<h3>Recursos do Microsoft 365</h3>
+<p>Mostra o que a organização tem disponível e como o portal está configurado: domínios verificados, recursos (Entra ID P1/P2, Governance, Exchange Online, código de acesso temporário), licenças com unidades livres e quais grupos podem ser usados em perfis. Bloqueios e avisos de configuração aparecem em destaque.</p>
+
+<h2 id="auditoria"><span class="num">11</span>Auditoria e privacidade (LGPD)</h2>
+<h3>Trilha de auditoria</h3>
+<p>Toda mudança em solicitações e perfis gera eventos automaticamente: envio, aprovação, rejeição, cancelamento, criação, licença, ativação, desligamento, cada etapa, geração do código de acesso (sem o código), alterações de perfis, execuções do agendador, anonimizações e exportações.</p>
+<ul>
+  <li><strong>Somente acréscimo:</strong> o portal não altera nem apaga eventos.</li>
+  <li><strong>Minimização:</strong> o evento identifica a solicitação pelo número; nome, login e e-mail do colaborador não entram na auditoria. Quem executou cada ação é mantido para responsabilização.</li>
+  <li><strong>Exportação para Excel</strong> (CSV com separador ";"), protegida contra injeção de fórmulas.</li>
+</ul>
+<figure><img src="img/10-auditoria.jpg" alt="Auditoria"><figcaption><b>Figura 13.</b> Auditoria com filtros por ação, solicitação, pessoa e período.</figcaption></figure>
+<h3>Privacidade</h3>
+<ul>
+  <li><strong>Retenção configurável:</strong> depois do prazo (sugestão: 2 anos após a conclusão), o agendador anonimiza a solicitação — remove nome, login, e-mail, matrícula, cargo, gestor, comentários e detalhes das etapas. A conta no Microsoft 365 não é alterada.</li>
+  <li><strong>Aviso de privacidade</strong> para todos os usuários, com finalidade, dados tratados, base legal, retenção e contato do encarregado (DPO).</li>
+  <li><strong>O motivo do desligamento não é pedido</strong>, e o formulário orienta a não informá-lo.</li>
+  <li>Os logs técnicos não recebem dados pessoais nem endereços do Microsoft 365.</li>
+</ul>
+<div class="caixa aviso"><span class="t">Responsabilidade da organização</span>O portal ajuda a cumprir a LGPD, mas a política de retenção, a base legal e o registro das operações de tratamento são decisões da organização — valide com o seu encarregado de dados.</div>
+
+<h2 id="interface"><span class="num">12</span>Interface</h2>
+<p>A interface segue o visual do Microsoft 365, com menu lateral, tema claro e escuro (automático, conforme o sistema operacional, ou escolhido pelo usuário) e adaptação para celular. O texto é em português simples, sem termos técnicos; informações para quem administra o Azure ficam recolhidas. As cores atendem ao contraste mínimo de acessibilidade (WCAG AA), é possível navegar pelo teclado e há atalho para pular direto ao conteúdo.</p>
+<div class="grade2" style="grid-template-columns: 2.1fr 1fr; align-items:start; width:74%; margin-left:auto; margin-right:auto">
+  <figure style="margin:0"><img src="img/13-inicio-escuro.jpg" alt="Tema escuro"><figcaption><b>Figura 14.</b> Tema escuro.</figcaption></figure>
+  <figure style="margin:0"><img src="img/14-celular.jpg" alt="Celular" style="width:78%;margin:0 auto"><figcaption><b>Figura 15.</b> Celular, com o menu aberto.</figcaption></figure>
+</div>
+
+<!-- ====================================================== PARTE III -->
+<div class="parte" style="break-before:auto; margin-top:22pt"><small>Parte III</small><span>Técnica</span></div>
+
+<h2 id="arquitetura" style="margin-top:0"><span class="num">13</span>Arquitetura</h2>
+<p>O portal é uma aplicação web em Python (FastAPI) hospedada no Azure App Service. Todas as chamadas ao Microsoft 365 passam pelo Microsoft Graph usando uma <strong>Managed Identity</strong>, uma identidade do Azure que não tem senha nem segredo.</p>
+<figure>
+<svg viewBox="0 0 760 330" xmlns="http://www.w3.org/2000/svg" font-family="Inter" font-size="10.5">
+  <defs><marker id="s2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6b7480"/></marker></defs>
+  <rect x="200" y="20" width="360" height="290" rx="14" fill="#f4f6f9" stroke="#dfe3e8"/>
+  <text x="214" y="40" font-weight="700" fill="#4a5360" font-size="9.5" letter-spacing="1">ASSINATURA AZURE DA ORGANIZAÇÃO</text>
+  <rect x="10" y="120" width="150" height="80" rx="10" fill="#fff" stroke="#b7d3f2"/>
+  <text x="85" y="148" text-anchor="middle" font-weight="700" fill="#0b3d6b">Usuários</text>
+  <text x="85" y="165" text-anchor="middle" fill="#4a5360" font-size="9.5">RH · Aprovadores</text>
+  <text x="85" y="179" text-anchor="middle" fill="#4a5360" font-size="9.5">Gestores · Admin</text>
+  <rect x="250" y="95" width="210" height="130" rx="10" fill="#fff" stroke="#0f6cbd" stroke-width="1.5"/>
+  <text x="355" y="120" text-anchor="middle" font-weight="700" fill="#0b3d6b">App Service (Linux)</text>
+  <text x="355" y="138" text-anchor="middle" fill="#4a5360" font-size="9.5">Portal FastAPI + login do Entra ID</text>
+  <rect x="268" y="152" width="174" height="26" rx="6" fill="#eaf2fc"/><text x="355" y="169" text-anchor="middle" fill="#0b3d6b" font-size="9.5">Managed Identity (sem segredo)</text>
+  <rect x="268" y="186" width="174" height="26" rx="6" fill="#eaf2fc"/><text x="355" y="203" text-anchor="middle" fill="#0b3d6b" font-size="9.5">Cabeçalhos de segurança + CSP</text>
+  <rect x="250" y="250" width="100" height="46" rx="8" fill="#fff" stroke="#dfe3e8"/><text x="300" y="270" text-anchor="middle" font-weight="600">Table Storage</text><text x="300" y="285" text-anchor="middle" fill="#6b7480" font-size="9">pedidos · auditoria</text>
+  <rect x="360" y="250" width="100" height="46" rx="8" fill="#fff" stroke="#dfe3e8"/><text x="410" y="270" text-anchor="middle" font-weight="600">App Insights</text><text x="410" y="285" text-anchor="middle" fill="#6b7480" font-size="9">logs sem dados pessoais</text>
+  <rect x="472" y="92" width="84" height="62" rx="8" fill="#fff" stroke="#dfe3e8"/><text x="514" y="114" text-anchor="middle" font-weight="600">Logic App</text><text x="514" y="130" text-anchor="middle" fill="#6b7480" font-size="8.5">agendador,</text><text x="514" y="143" text-anchor="middle" fill="#6b7480" font-size="8.5">de hora em hora</text>
+  <rect x="600" y="80" width="150" height="80" rx="10" fill="#fff" stroke="#b7d3f2"/>
+  <text x="675" y="108" text-anchor="middle" font-weight="700" fill="#0b3d6b">Microsoft Graph</text>
+  <text x="675" y="125" text-anchor="middle" fill="#4a5360" font-size="9.5">Entra ID · Microsoft 365</text>
+  <text x="675" y="139" text-anchor="middle" fill="#4a5360" font-size="9.5">(usuários, grupos, licenças)</text>
+  <rect x="600" y="210" width="150" height="70" rx="10" fill="#fff" stroke="#dfe3e8"/>
+  <text x="675" y="236" text-anchor="middle" font-weight="700">GitHub Actions</text>
+  <text x="675" y="252" text-anchor="middle" fill="#4a5360" font-size="9.5">testes + publicação</text>
+  <text x="675" y="266" text-anchor="middle" fill="#4a5360" font-size="9.5">login OIDC (sem segredo)</text>
+  <g stroke="#6b7480" stroke-width="1.4" fill="none" marker-end="url(#s2)">
+    <path d="M160 160h88"/><path d="M300 225v23"/><path d="M410 225v23"/><path d="M472 125h-10"/>
+    <path d="M460 165 C530 165 540 120 598 120"/><path d="M600 245 C520 245 500 215 462 205"/>
+  </g>
+  <text x="204" y="152" text-anchor="middle" fill="#6b7480" font-size="9">HTTPS</text>
+  <text x="520" y="186" fill="#6b7480" font-size="9">token da identidade</text>
+</svg>
+<figcaption><b>Figura 16.</b> Componentes e conexões. Tudo fica na assinatura Azure e no Microsoft 365 da própria organização.</figcaption>
+</figure>
+<h3>Situações de uma solicitação</h3>
+<figure>
+<svg viewBox="0 0 760 150" xmlns="http://www.w3.org/2000/svg" font-family="Inter" font-size="10">
+  <defs><marker id="s3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#8aa4bf"/></marker></defs>
+  <g font-weight="600" text-anchor="middle">
+    <rect x="10" y="20" width="110" height="30" rx="15" fill="#fff6e0"/><text x="65" y="39" fill="#8a5a00">Aguardando</text>
+    <rect x="160" y="20" width="100" height="30" rx="15" fill="#eaf2fc"/><text x="210" y="39" fill="#0b3d6b">Aprovada</text>
+    <rect x="300" y="20" width="110" height="30" rx="15" fill="#eaf2fc"/><text x="355" y="39" fill="#0b3d6b">Conta criada</text>
+    <rect x="450" y="20" width="100" height="30" rx="15" fill="#eaf2fc"/><text x="500" y="39" fill="#0b3d6b">Licenciada</text>
+    <rect x="590" y="20" width="80" height="30" rx="15" fill="#eef8ee"/><text x="630" y="39" fill="#0e700e">Ativa</text>
+    <rect x="10" y="100" width="110" height="30" rx="15" fill="#fdf1f2"/><text x="65" y="119" fill="#b10e1c">Rejeitada</text>
+    <rect x="160" y="100" width="100" height="30" rx="15" fill="#f4f6f9"/><text x="210" y="119" fill="#4a5360">Cancelada</text>
+    <rect x="300" y="100" width="110" height="30" rx="15" fill="#fdf1f2"/><text x="355" y="119" fill="#b10e1c">Falha parcial</text>
+    <rect x="590" y="100" width="160" height="30" rx="15" fill="#3d4450"/><text x="670" y="119" fill="#fff">Desligada (bloqueada)</text>
+  </g>
+  <g stroke="#8aa4bf" stroke-width="1.4" fill="none" marker-end="url(#s3)">
+    <path d="M120 35h38"/><path d="M260 35h38"/><path d="M410 35h38"/><path d="M550 35h38"/>
+    <path d="M65 50v48"/><path d="M90 50 C110 80 180 70 205 98"/><path d="M355 50v48"/><path d="M630 50v48"/>
+  </g>
+  <text x="440" y="88" fill="#6b7480" font-size="9">reprocessada automaticamente ou pelo administrador</text>
+</svg>
+<figcaption><b>Figura 17.</b> Principais situações de uma admissão. O desligamento segue Aguardando → Aprovada (agendado) → Desligada.</figcaption>
+</figure>
+<table>
+  <thead><tr><th>Componente</th><th>Papel</th></tr></thead>
+  <tbody>
+    <tr><td class="k">App Service (Linux, Python)</td><td>Hospeda o portal. O login é feito pelo próprio App Service com o Entra ID (somente contas da organização).</td></tr>
+    <tr><td class="k">Managed Identity</td><td>Identidade do portal para o Microsoft Graph e o Storage. Sem senha, sem certificado, sem segredo a renovar.</td></tr>
+    <tr><td class="k">Azure Table Storage</td><td>Solicitações, perfis, auditoria e estado do agendador. Acesso só pela identidade (chaves de acesso desativadas).</td></tr>
+    <tr><td class="k">Logic App</td><td>Agendador: chama o portal de hora em hora para licenças, ativações, desligamentos e anonimização.</td></tr>
+    <tr><td class="k">Application Insights / Log Analytics</td><td>Monitoramento e logs técnicos, com limite diário de ingestão e sem dados sensíveis.</td></tr>
+    <tr><td class="k">GitHub Actions</td><td>Testa cada mudança e publica no Azure com login federado (OIDC), sem segredo guardado no GitHub.</td></tr>
+  </tbody>
+</table>
+
+
+<h2 id="seguranca"><span class="num">14</span>Segurança</h2>
+<p class="lead">O portal tem permissões fortes no Microsoft 365 — ele cria contas e remove acessos. Por isso, a segurança foi desenhada em camadas.</p>
+<h3>Nada para vazar</h3>
+<ul>
+  <li><strong>Nenhum segredo:</strong> o portal usa Managed Identity para o Microsoft Graph e o Storage; o login dos usuários não usa client secret; a publicação pelo GitHub usa login federado (OIDC). Não há senha, certificado ou chave em arquivos, no GitHub ou nas configurações.</li>
+  <li><strong>Senhas e códigos nunca são guardados:</strong> a senha inicial é aleatória e descartada; o código de acesso é mostrado uma vez, com cache desativado, e nunca vai para banco, log ou e-mail.</li>
+</ul>
+<h3>Quem pode o quê</h3>
+<ul>
+  <li><strong>Login restrito à organização</strong> e revalidado no servidor (organização e aplicativo conferidos em cada requisição).</li>
+  <li><strong>Papéis verificados em cada rota do servidor</strong>; o menu apenas reflete os papéis, não é o controle de acesso.</li>
+  <li><strong>O navegador nunca escolhe grupos:</strong> o RH escolhe um perfil; os grupos vêm do perfil, que foi validado pelo administrador no Microsoft 365.</li>
+  <li><strong>Grupos protegidos:</strong> grupos com funções administrativas, dinâmicos e os grupos de papéis do portal nunca podem ser usados.</li>
+  <li><strong>Sem exclusão:</strong> o portal não tem permissão para excluir usuários nem para alterar administradores.</li>
+</ul>
+<h3>Proteções da aplicação</h3>
+<table>
+  <thead><tr><th>Proteção</th><th>Como funciona</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Modo simulação</td><td>Ligado por padrão: nada é alterado no Microsoft 365 até o administrador desligá-lo conscientemente.</td></tr>
+    <tr><td class="k">Limite diário de contas</td><td>Evita criação em massa por erro ou abuso.</td></tr>
+    <tr><td class="k">Proteção contra CSRF</td><td>Formulários com token e verificação de origem.</td></tr>
+    <tr><td class="k">Cabeçalhos de segurança</td><td>CSP restritiva (nenhum script ou estilo externo ou embutido), HSTS, bloqueio de iframe, <code>nosniff</code>, sem cache.</td></tr>
+    <tr><td class="k">Validação de entrada</td><td>Limites de tamanho e caracteres proibidos em todos os campos que chegam ao Microsoft 365.</td></tr>
+    <tr><td class="k">Idempotência e concorrência</td><td>Reenvios não duplicam; gravações com controle de versão; a execução do desligamento é reservada antes de escrever.</td></tr>
+    <tr><td class="k">Dependências e segredos</td><td>A cada mudança, o CI roda lint, 332 testes automatizados, auditoria de dependências e varredura de segredos (gitleaks).</td></tr>
+  </tbody>
+</table>
+<div class="caixa perigo"><span class="t">Seja realista sobre o risco</span>Quem consegue publicar código no portal ganha, na prática, as permissões do portal no Microsoft 365. Proteja a branch principal (pull request e CI obrigatórios), limite quem pode escrever no repositório e exija aprovação para publicar em produção.</div>
+
+<h2 id="permissoes"><span class="num">15</span>Permissões no Microsoft 365</h2>
+<p>As permissões do Microsoft Graph são concedidas à Managed Identity <strong>por nível</strong>, com o script <code>Set-GraphPermissions.ps1</code>, que mostra o plano e só aplica após a confirmação <code>SIM</code>. Cada nível inclui os anteriores; o script nunca remove permissões.</p>
+<table>
+  <thead><tr><th>Nível</th><th>Permissões</th><th>Para quê</th></tr></thead>
+  <tbody>
+    <tr><td class="k">leitura</td><td class="mono">User.Read.All, Group.Read.All, Organization.Read.All, Domain.Read.All, Policy.Read.AuthenticationMethod</td><td>Buscar gestores, verificar logins, listar grupos, licenças e domínios. Não altera nada.</td></tr>
+    <tr><td class="k">criacao</td><td class="mono">User.ReadWrite.All, User-LifeCycleInfo.ReadWrite.All, GroupMember.ReadWrite.All</td><td>Criar a conta desativada, definir gestor e datas, incluir nos grupos.</td></tr>
+    <tr><td class="k">ciclo-de-vida</td><td class="mono">User.EnableDisableAccount.All, UserAuthenticationMethod.ReadWrite.All (LicenseAssignment.ReadWrite.All só com licença direta)</td><td>Ativar a conta no dia da admissão e gerar o código de acesso inicial.</td></tr>
+    <tr><td class="k">desligamento</td><td class="mono">User.RevokeSessions.All</td><td>Encerrar as sessões ativas no desligamento.</td></tr>
+  </tbody>
+</table>
+<p>O login dos usuários usa um App Registration separado, só com <code>User.Read</code> (delegada). Revise periodicamente em <em>Entra → Aplicativos empresariais → Identidades gerenciadas</em>.</p>
+
+<h2 id="implantacao" class="nova"><span class="num">16</span>Implantação passo a passo</h2>
+<h3>Requisitos</h3>
+<table>
+  <thead><tr><th>Item</th><th>Mínimo</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Microsoft Entra ID</td><td>Free para o essencial; <strong>P1 recomendado</strong> (licença por grupo e atribuição de papéis a grupos); Governance opcional.</td></tr>
+    <tr><td class="k">Microsoft 365</td><td>Somente nuvem (sem sincronização com Active Directory local).</td></tr>
+    <tr><td class="k">Azure</td><td>Qualquer assinatura, com permissão de <em>Owner</em> para criar as atribuições da identidade.</td></tr>
+    <tr><td class="k">Quem implanta</td><td>Administrador Global (ou Administrador de Aplicativos + Grupos) para o login e as permissões.</td></tr>
+    <tr><td class="k">Ferramentas</td><td>PowerShell 5.1 ou 7+, Azure CLI com Bicep, Python 3.11+, Git e GitHub CLI.</td></tr>
+  </tbody>
+</table>
+<p>Todos os scripts são idempotentes (podem rodar de novo), mostram uma pré-visualização e só aplicam após você digitar <code>SIM</code>. Nenhum script exclui recursos.</p>
+<ol class="passos">
+  <li><strong>Baixar e configurar.</strong>
+<pre>git clone https://github.com/&lt;voce&gt;/m365-user-provisioning-portal.git
+cd m365-user-provisioning-portal
+Copy-Item .env.example .env   <span class="c"># preencha tenant, assinatura e domínio</span>
+pwsh ./scripts/Test-Prerequisites.ps1 -TenantId &lt;tenant-id&gt;   <span class="c"># só leitura</span></pre></li>
+  <li><strong>Criar a infraestrutura no Azure</strong> (App Service, identidade, Storage, monitoramento).
+<pre>az login --tenant &lt;tenant-id&gt;
+pwsh ./scripts/Deploy-Infrastructure.ps1 -Environment lab -WhatIfOnly
+pwsh ./scripts/Deploy-Infrastructure.ps1 -Environment lab
+pwsh ./scripts/Deploy-Application.ps1 -Environment lab</pre></li>
+  <li><strong>Configurar o login e os papéis</strong> (cria o App Registration sem segredo e os três grupos de papéis).
+<pre>pwsh ./scripts/New-EntraApplication.ps1 -Environment lab -AddMeToGroups Administradores
+pwsh ./scripts/Deploy-Infrastructure.ps1 -Environment lab</pre></li>
+  <li><strong>Conceder a leitura do Microsoft 365</strong> e cadastrar os perfis de onboarding no portal.
+<pre>pwsh ./scripts/Set-GraphPermissions.ps1 -Environment lab</pre></li>
+  <li><strong>Testar em modo simulação</strong>: faça admissões e desligamentos de teste; nada é alterado no Microsoft 365.</li>
+  <li><strong>Ligar a execução real</strong>: conceda os níveis <code>criacao</code>, <code>ciclo-de-vida</code> e <code>desligamento</code>, defina <code>DRY_RUN=false</code>, rode <code>Deploy-Infrastructure.ps1</code> e reinicie o App Service. Habilite a política de código de acesso temporário no Entra.</li>
+  <li><strong>Opcional:</strong> definir a retenção LGPD e o contato do DPO, e ativar a publicação automática pelo GitHub (capítulo 17).</li>
+</ol>
+<h3>Custo estimado</h3>
+<table>
+  <thead><tr><th>Recurso</th><th>Laboratório</th><th>Produção</th></tr></thead>
+  <tbody>
+    <tr><td class="k">App Service</td><td>F1 — gratuito (cota diária, sem Always On)</td><td>B1 ou superior (sempre disponível)</td></tr>
+    <tr><td class="k">Storage (Table)</td><td>Centavos por mês</td><td>Centavos por mês</td></tr>
+    <tr><td class="k">Logs e monitoramento</td><td>Normalmente dentro da franquia gratuita (limite diário de 1 GB)</td><td>Conforme volume</td></tr>
+    <tr><td class="k">Managed Identity, Logic App</td><td>Gratuito / centavos</td><td>Gratuito / centavos</td></tr>
+  </tbody>
+</table>
+
+<h2 id="cicd"><span class="num">17</span>Publicação automática (GitHub Actions)</h2>
+<p>Com o script <code>New-GitHubDeployIdentity.ps1</code>, o repositório passa a publicar sozinho: cada mudança na branch <code>main</code> é testada e, se tudo passar, publicada no ambiente de laboratório. Produção só é publicada manualmente, com aprovação.</p>
+<ul>
+  <li><strong>Sem segredo no GitHub:</strong> o login no Azure é federado (OIDC) — o token vale minutos e só é emitido para o ambiente e a branch autorizados.</li>
+  <li><strong>Escopo mínimo:</strong> a identidade de publicação só pode alterar o próprio Web App, nada mais na assinatura.</li>
+  <li><strong>Versão conferida:</strong> a publicação só termina quando o portal responde com a versão nova.</li>
+</ul>
+<pre>gh auth login
+pwsh ./scripts/New-GitHubDeployIdentity.ps1 -Environment lab   <span class="c"># mostra o plano e pede SIM</span></pre>
+
+<h2 id="operacao"><span class="num">18</span>Operação e solução de problemas</h2>
+<h3>Rotina recomendada</h3>
+<ul>
+  <li><strong>Diariamente:</strong> abrir o Painel, conferir falhas e aprovações pendentes.</li>
+  <li><strong>Semanalmente:</strong> conferir licenças disponíveis e a última execução do agendador.</li>
+  <li><strong>Mensalmente:</strong> revisar membros dos grupos de papéis e as permissões da identidade; exportar a auditoria, se a política da empresa pedir.</li>
+</ul>
+<p>As telas mostram mensagens em linguagem simples. O detalhe técnico de cada falha fica no log do App Service / Application Insights.</p>
+<table>
+  <thead><tr><th>Mensagem na tela</th><th>O que fazer</th></tr></thead>
+  <tbody>
+    <tr><td class="k">"O portal não tem permissão … (código 403)"</td><td>Conceder o nível de permissão necessário com <code>Set-GraphPermissions.ps1</code> e reiniciar o App Service. No desligamento, contas com funções administrativas precisam ser tratadas manualmente.</td></tr>
+    <tr><td class="k">"Não há licenças disponíveis"</td><td>Comprar ou liberar licenças; o agendador tenta de novo sozinho.</td></tr>
+    <tr><td class="k">"O Microsoft 365 recusou o código de acesso"</td><td>Habilitar a política de código de acesso temporário (Temporary Access Pass) no Entra e incluir os colaboradores.</td></tr>
+    <tr><td class="k">"O Microsoft 365 não respondeu agora"</td><td>Nada: instabilidade momentânea; nova tentativa automática.</td></tr>
+    <tr><td class="k">Agendador parado há mais de 2 horas</td><td>Ver o histórico da Logic App no portal do Azure; se houver erro 401/403, rodar <code>New-EntraApplication.ps1</code> novamente.</td></tr>
+    <tr><td class="k">"Limite diário de contas atingido"</td><td>Aguardar o dia seguinte ou aumentar o limite nas configurações.</td></tr>
+  </tbody>
+</table>
+<p class="pequeno">Guia completo: <code>docs/SOLUCAO_DE_PROBLEMAS.md</code> no repositório.</p>
+
+<h2 id="configuracao"><span class="num">19</span>Configurações</h2>
+<p>As configurações ficam no arquivo <code>.env</code> (que nunca é versionado) e são levadas ao App Service pelo script de infraestrutura. Nenhuma delas é segredo.</p>
+<table>
+  <thead><tr><th>Configuração</th><th>Padrão</th><th>Descrição</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">DRY_RUN</td><td class="mono">true</td><td>Modo simulação: nada é alterado no Microsoft 365.</td></tr>
+    <tr><td class="mono">M365_DEFAULT_DOMAIN</td><td>—</td><td>Domínio verificado usado nos novos logins.</td></tr>
+    <tr><td class="mono">UPN_PATTERN</td><td class="mono">{nome}.{ultimo_sobrenome}</td><td>Padrão do login.</td></tr>
+    <tr><td class="mono">LICENSE_MODE</td><td class="mono">group</td><td>Licença por grupo (recomendado, exige P1) ou direta.</td></tr>
+    <tr><td class="mono">LICENSE_LEAD_DAYS</td><td class="mono">1</td><td>Quantos dias antes da admissão a licença é atribuída.</td></tr>
+    <tr><td class="mono">TAP_LIFETIME_MINUTES</td><td class="mono">480</td><td>Validade do código de acesso inicial (limitada pela política do Entra).</td></tr>
+    <tr><td class="mono">OFFBOARDING_BLOCK_HOUR</td><td class="mono">18</td><td>Hora do bloqueio no último dia de trabalho.</td></tr>
+    <tr><td class="mono">PROVISIONING_DAILY_LIMIT</td><td class="mono">20</td><td>Máximo de contas criadas por dia.</td></tr>
+    <tr><td class="mono">TIMEZONE</td><td class="mono">America/Sao_Paulo</td><td>Fuso usado para "hoje" e para o horário do bloqueio.</td></tr>
+    <tr><td class="mono">LGPD_RETENTION_DAYS</td><td class="mono">0</td><td>Dias após a conclusão para anonimizar (0 = desativado; sugestão 730).</td></tr>
+    <tr><td class="mono">PRIVACY_CONTACT</td><td>—</td><td>Contato do encarregado de dados (DPO).</td></tr>
+  </tbody>
+</table>
+
+<!-- ====================================================== APÊNDICES -->
+<div class="parte"><small>Apêndices</small><span>Referência</span></div>
+
+<h2 id="glossario" style="margin-top:0"><span class="num">A</span>Glossário</h2>
+<table>
+  <tbody>
+    <tr><td class="k">Microsoft Entra ID</td><td>Serviço de identidade do Microsoft 365 (antigo Azure AD), onde ficam usuários, grupos e permissões.</td></tr>
+    <tr><td class="k">Microsoft Graph</td><td>Interface oficial da Microsoft usada pelo portal para ler e alterar dados do Microsoft 365.</td></tr>
+    <tr><td class="k">Tenant</td><td>O "espaço" da organização no Microsoft 365.</td></tr>
+    <tr><td class="k">Login (UPN)</td><td>Nome de usuário corporativo, no formato de e-mail (ex.: <code>maria.souza@empresa.com</code>).</td></tr>
+    <tr><td class="k">Código de acesso inicial (TAP)</td><td>Temporary Access Pass: código temporário, de uso único, que substitui a senha no primeiro acesso e permite cadastrar o MFA.</td></tr>
+    <tr><td class="k">MFA</td><td>Autenticação multifator: além da senha, uma confirmação no celular ou biometria.</td></tr>
+    <tr><td class="k">Managed Identity</td><td>Identidade do Azure para aplicações, sem senha ou segredo; o Azure cuida das credenciais.</td></tr>
+    <tr><td class="k">OIDC (login federado)</td><td>Forma de o GitHub provar ao Azure quem ele é sem guardar senha, com tokens de curta duração.</td></tr>
+    <tr><td class="k">Perfil de onboarding</td><td>Conjunto de grupos de acesso e licença de uma função, definido pelo administrador.</td></tr>
+    <tr><td class="k">Modo simulação (DRY_RUN)</td><td>Modo em que o portal mostra o que faria, sem alterar nada no Microsoft 365.</td></tr>
+    <tr><td class="k">Idempotente</td><td>Que pode ser executado várias vezes com o mesmo resultado, sem duplicar nada.</td></tr>
+    <tr><td class="k">Anonimização</td><td>Remoção definitiva dos dados pessoais de uma solicitação, mantendo apenas o necessário para rastreabilidade.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="repositorio"><span class="num">B</span>Estrutura do repositório e licença</h2>
+<table>
+  <thead><tr><th>Pasta</th><th>Conteúdo</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">app/</td><td>Aplicação (FastAPI): rotas, regras de negócio, integração com o Graph, armazenamento, telas.</td></tr>
+    <tr><td class="mono">infra/</td><td>Infraestrutura como código (Bicep).</td></tr>
+    <tr><td class="mono">scripts/</td><td>PowerShell de implantação, login, permissões e identidade de publicação.</td></tr>
+    <tr><td class="mono">docs/</td><td>Documentação em Markdown e este PDF (fonte em <code>docs/pdf/</code>).</td></tr>
+    <tr><td class="mono">tests/</td><td>Testes automatizados (unidade, rotas, contrato de armazenamento, segurança, interface).</td></tr>
+    <tr><td class="mono">.github/workflows/</td><td>CI (testes, Bicep, varredura de segredos) e publicação.</td></tr>
+  </tbody>
+</table>
+<h3>Documentos detalhados no repositório</h3>
+<p class="pequeno"><code>docs/IMPLANTACAO.md</code> · <code>docs/CONFIGURACAO_ENTRA.md</code> · <code>docs/PERMISSOES_GRAPH.md</code> · <code>docs/CICLO_DE_VIDA.md</code> · <code>docs/DESLIGAMENTO.md</code> · <code>docs/AUDITORIA_E_LGPD.md</code> · <code>docs/REGRAS_DE_NOME.md</code> · <code>docs/CI_CD.md</code> · <code>docs/ARQUITETURA.md</code> · <code>docs/SOLUCAO_DE_PROBLEMAS.md</code> · <code>SECURITY.md</code></p>
+<h3>Licença e contribuição</h3>
+<p>O projeto é distribuído sob a <strong>licença MIT</strong>: pode ser usado, alterado e redistribuído livremente, inclusive comercialmente, mantendo o aviso de copyright. É fornecido "no estado em que se encontra", sem garantias. Contribuições são bem-vindas (veja <code>CONTRIBUTING.md</code>); vulnerabilidades devem ser relatadas de forma privada, conforme <code>SECURITY.md</code>.</p>
+<div class="caixa info"><span class="t">Sobre as imagens</span>As capturas de tela deste documento foram feitas em ambiente de teste com a organização fictícia "Contoso" e pessoas fictícias. Nenhum dado real aparece.</div>
+
+</body>
+</html>

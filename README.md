@@ -4,7 +4,13 @@ Portal **open source** (licença MIT) para automatizar a entrada e a saída de c
 
 Cada organização implanta o portal **no próprio tenant e na própria assinatura Azure**. Nenhum dado de tenant fica neste repositório.
 
-> **Status:** em desenvolvimento (v0.10 — Sprint 10: CI/CD com GitHub Actions e OIDC — deploy automático no lab, produção com aprovação, nenhum segredo no GitHub). Admissão, desligamento, auditoria e LGPD completos.
+> **Status:** em desenvolvimento (v0.11). Admissão, desligamento, auditoria, LGPD, publicação automática pelo GitHub e nova interface completos.
+
+## Documentação completa (PDF)
+
+**[Baixar a documentação completa em PDF](docs/Documentacao-Portal-Provisionamento-M365.pdf)** — 26 páginas para gestores e equipes técnicas: por que implantar, benefícios e riscos evitados, todas as funcionalidades com telas, arquitetura, segurança, permissões, implantação passo a passo, operação e glossário.
+
+No GitHub, abra o arquivo e use o botão **Download** (ícone de seta, no canto superior direito da visualização). A fonte do PDF está em [`docs/pdf/`](docs/pdf/) e pode ser regerada com `python docs/pdf/gerar_pdf.py`.
 
 ## Como funciona
 
