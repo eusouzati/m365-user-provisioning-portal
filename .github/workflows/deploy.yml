@@ -56,7 +56,7 @@ jobs:
           ls -lh app.zip
 
       - name: Login no Azure (OIDC)
-        uses: azure/login@v2
+        uses: azure/login@v3
         with:
           client-id: ${{ vars.AZURE_CLIENT_ID }}
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
