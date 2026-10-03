@@ -1,6 +1,6 @@
 # Dependências de execução (usadas pelo build do Azure App Service)
 fastapi>=0.141.1,<1
-uvicorn[standard]>=0.30,<1
+uvicorn[standard]>=0.54.0,<1
 jinja2>=3.1,<4
 httpx>=0.28.1,<1
 python-multipart>=0.0.9
